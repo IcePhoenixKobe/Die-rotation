@@ -14,7 +14,6 @@ private:
 
     void parse_PIN(std::ifstream&);
     void parse_Netlist(std::ifstream&);
-    void parse_Shuffle(std::ifstream&);
 public:
     Chip();
     ~Chip() {}
@@ -43,7 +42,7 @@ public:
     std::vector<Polar> get_Die_Pol_Pos(int i) const { return dice[i].get_Pol_Position(); }
 
     // get netlist information
-    int get_Netlist_Index(std::string) const;
+    size_t get_Netlist_Index(std::string) const;
 
     // set the data of ball
     void set_Ball_Amount(int num) {ball.set_Amount(num); }

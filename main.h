@@ -38,14 +38,26 @@ typedef struct Polar
 
 typedef struct Relationship {
 	std::string relation_name;
-	size_t ball_index;
-	size_t die_index;
-	size_t pad_index;
-    Relationship() : relation_name("unknown"), ball_index(-1), die_index(-1), pad_index(-1) {}
-    Relationship(std::string name, size_t bi, size_t di, size_t pi) : 
-        relation_name(name), ball_index(bi), die_index(di), pad_index(pi) {}
+    std::vector<std::pair<size_t, size_t>> dice_pads_index;
+    std::vector<size_t> balls_index;
+    Cartesian pad_car;
+    Cartesian ball_car;
+    Polar pad_pol;
+    Relationship() : relation_name("unknown")
+    {
+        dice_pads_index.clear();
+        balls_index.clear();
+        pad_car = Cartesian(0.0, 0.0);
+        ball_car = Cartesian(0.0, 0.0);
+        pad_pol = Polar(0.0, 0.0);
+    }
+    Relationship(std::string name, std::vector<std::pair<size_t, size_t>> par_dice_pads_index, std::vector<size_t> par_balls_index, Cartesian par_pad, Cartesian par_ball) : relation_name(name)
+    {
+        dice_pads_index = par_dice_pads_index;
+        balls_index = par_balls_index;
+        pad_car = par_pad;
+        ball_car = par_ball;
+    }
 }Relationship;
-
-int parser(int, char**);   // for parser.cpp
 
 #endif

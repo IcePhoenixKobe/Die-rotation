@@ -146,7 +146,6 @@ void Chip::parse_Netlist(std::ifstream& fin)
 		getline(fin, str_temp);
 	} while (str_temp.find("$NETS") == std::string::npos);   // if find "$NET"
     // start to parse netlist
-    
     while (getline(fin, str_temp))
 	{
         if (str_temp.find(",") != std::string::npos)
@@ -189,28 +188,56 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         else
                             std::cout << "Warning: netlist has no BGA or DIE\n";
                     }
+                    
+                    Cartesian center_of_gravity(0, 0);
+                    std::vector<size_t> balls_index;
+                    balls_index.clear();
                     for (size_t i = 0; i < BGAs.size(); i++)
                     {
-                        rela_s.ball_index = ball.get_Ball_Index(BGAs[i]);   // set ball_index
-                        if (rela_s.ball_index == -1UL)
+                        size_t index_temp = ball.get_Ball_Index(BGAs[i]);   // set ball_index
+                        if (index_temp == -1UL)
                         {
                             std::cout << "error: Not found " << BGAs[i] << std::endl;
                             exit(0);
                         }
-
-                        for (size_t j = 0; j < DIEs.size(); j++)
+                        else
                         {
-                            std::stringstream string_cache(DIEs[j].substr(3, DIEs[j].find(".") - 3));
-                            string_cache >> rela_s.die_index;           // set die_index
-                            rela_s.pad_index = dice[rela_s.die_index - 1].get_Pad_Index(DIEs[j]);   // set pad_index
-                            if (rela_s.pad_index == -1UL)
-                            {
-                                std::cout << "error: Not found " << DIEs[j] << std::endl;
-                                exit(0);
-                            }
-                            netlist.push_back(rela_s);
+                            center_of_gravity.x += ball.get_All_Pos().at(index_temp).x;
+                            center_of_gravity.y += ball.get_All_Pos().at(index_temp).y;
+                            balls_index.push_back(index_temp);
                         }
                     }
+                    center_of_gravity.x /= static_cast<double>(BGAs.size());
+                    center_of_gravity.y /= static_cast<double>(BGAs.size());
+                    rela_s.balls_index = balls_index;
+                    rela_s.ball_car = center_of_gravity;
+                    
+                    std::vector<std::pair<size_t, size_t>> dice_pads_index;
+                    dice_pads_index.clear();
+                    center_of_gravity = Cartesian(0, 0);
+                    for (size_t i = 0; i < DIEs.size(); i++)
+                    {
+                        std::pair<size_t, size_t> index_temp(-1UL, -1UL);
+                        std::stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
+                        string_cache >> index_temp.first;           // set die_index
+                        index_temp.second = dice[index_temp.first - 1].get_Pad_Index(DIEs[i]);   // set pad_index
+                        if (index_temp.second == -1UL)
+                        {
+                            std::cout << "error: Not found " << DIEs[i] << std::endl;
+                            exit(0);
+                        }
+                        else
+                        {
+                            center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
+                            center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
+                            dice_pads_index.push_back(index_temp);
+                        }
+                        center_of_gravity.x /= static_cast<double>(DIEs.size());
+                        center_of_gravity.y /= static_cast<double>(DIEs.size());
+                        rela_s.dice_pads_index = dice_pads_index;
+                        rela_s.pad_car = center_of_gravity;
+                    }
+                    netlist.push_back(rela_s);
                 }
                 else
                 {
@@ -221,50 +248,40 @@ void Chip::parse_Netlist(std::ifstream& fin)
             str.clear();
         }
 	}
+
+    // Cartesian convert to Polar
+    double x = 0.0, y = 0.0;
+    for (size_t i = 0; i < netlist.size(); i++)
+    {
+        x = netlist[i].pad_car.x;
+        y = netlist[i].pad_car.y;
+
+        // calculate radius
+        netlist[i].pad_pol.radius = sqrt(x * x + y * y);
+        //std::cout << "\tradius = " << pol_position[i].radius;
+
+        // calculate theta
+        x /= netlist[i].pad_pol.radius;
+        y /= netlist[i].pad_pol.radius;
+        if (x >= 0 && y >= 0){   //Quadrant I
+            netlist[i].pad_pol.angle = (asin(y) + acos(x)) / 2;
+        }
+        else if (x < 0 && y >= 0){  //Quadrant II
+            netlist[i].pad_pol.angle = acos(x);
+        }
+        else if (x < 0 && y < 0){  //Quadrant III
+            netlist[i].pad_pol.angle = acos(x) - 2 * asin(y);
+        }
+        else if (x >= 0 && y < 0){  //Quadrant IV
+            netlist[i].pad_pol.angle = (2 * M_PI + asin(y));
+        }
+        //std::cout << "\ttheta = " << pol_position[i].angle << std::endl;
+    }
+
     std::cout << "parse netlist done: Amount of netlist = " << netlist.size() <<std::endl;
     fin.close();
     netlist_Content();
     return;
-}
-
-void Chip::parse_Shuffle(std::ifstream& fin)
-{
-    std::string str;
-    str.clear();
-
-    do
-    {
-        getline(fin, str);
-    } while (str.find("$NETS") == std::string::npos);   // if find "$NET"
-
-    while (getline(fin, str))
-    {
-        if (str.find(";") != std::string::npos)
-        {
-            std::cout << "test" << str << std::endl;
-            std::string sub_str;
-            std::stringstream ss;
-            sub_str.clear();
-            ss.clear();
-
-            ss << str;
-            ss >> sub_str;
-            int net_index = get_Netlist_Index(sub_str);
-            if (net_index != -1)
-            {
-                ss >> sub_str;  // ignore ";"
-                ss >> sub_str;
-                if (sub_str.find("BGA") != std::string::npos)
-                {
-                    size_t ball_index = ball.get_Ball_Index(sub_str);
-                    if (ball_index != -1UL)
-                    {
-                        netlist[net_index].ball_index = ball_index;
-                    }
-                }
-            }
-        }
-    }
 }
 
 void Chip::ball_Content()
@@ -314,9 +331,14 @@ void Chip::netlist_Content()
     std::cout << "\n----------Netlist content----------\n"
      << "amount: " << netlist.size() << std::endl;
     for (size_t i = 0; i < netlist.size(); i++)
-        std::cout << std::setw(4) << i + 1 << " " << std::setw(10) << netlist[i].relation_name << ": "
-         << ball.get_Ball_Name(netlist[i].ball_index) << "-->" 
-         << dice[netlist[i].die_index - 1].get_Pad_Name(netlist[i].pad_index) << std::endl;
+    {
+        std::cout << std::setw(4) << i + 1 << " " << std::setw(10) << netlist[i].relation_name << ": ";
+        for (size_t j = 0; j < netlist[i].balls_index.size(); j++)
+            std::cout << "\n\t" << ball.get_Ball_Name(netlist[i].balls_index[j]);
+        std::cout << "\n\t-->\n";
+        for (size_t j = 0; j < netlist[i].dice_pads_index.size(); j++)
+            std::cout << "\t" << dice[netlist[i].dice_pads_index[j].first - 1].get_Pad_Name(netlist[i].dice_pads_index[j].second) << std::endl;
+    }
     std::cout << "----------Netlist content----------\n";
     return;
 }
@@ -351,19 +373,6 @@ int Chip::parser(int argc, char** argv)
 	}
     parse_Netlist(netlist_fin);
 
-    // argument has shuffle netlist file
-	if (argc >= 5) {
-        index_suffle = argv[4];//get index
-		if (index_suffle == "-s") {
-			shuffle_fin.open(argv[5]);
-			if (!shuffle_fin) {
-				std::cout << "file \"" << argv[5] << "\" open error.\n";
-				return -1;
-            }
-            parse_Shuffle(shuffle_fin);
-        }
-    }
-
     /*
     std::cout << "number of netlist: " << netlist.size() << std::endl;
     for (size_t index = 0; index < netlist.size(); index++)
@@ -375,12 +384,12 @@ int Chip::parser(int argc, char** argv)
     return 0;
 }
 
-int Chip::get_Netlist_Index(std::string str) const
+size_t Chip::get_Netlist_Index(std::string str) const
 {
     for (size_t t = 0; t <= netlist.size(); t++)
         if (netlist[t].relation_name == str)
-            return static_cast<int>(t);
-    return -1;
+            return t;
+    return -1UL;
 }
 
 void Chip::output_LP_File(std::ofstream& fout)
@@ -414,7 +423,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     fout << "  0 <= x <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
-                 << "  2r" << i << " = " << 2 * dice_pads[netlist[i].die_index - 1][netlist[i].pad_index].radius << "\n" 
+                 << "  2r" << i << " = " << 2 * netlist[i].pad_pol.radius << "\n" 
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 
@@ -433,16 +442,16 @@ void Chip::output_LP_File(std::ofstream& fout)
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << "\\net" << i << "\n";
         fout << " \\basic equation\n";
-        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 x + " << dice_pads[netlist[i].die_index - 1][netlist[i].pad_index].angle << " )\n" 
+        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 x + " << netlist[i].pad_pol.angle << " )\n" 
                  << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
                  << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
-                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( ball_pos[netlist[i].ball_index].x + dice[netlist[i].die_index - 1].get_Center().x ) << " n" << i << "s )\n"
-                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( ball_pos[netlist[i].ball_index].y + dice[netlist[i].die_index - 1].get_Center().y ) << " n" << i << "c )\n";
+                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( netlist[i].ball_car.x + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x ) << " n" << i << "s )\n"
+                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( netlist[i].ball_car.y + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y ) << " n" << i << "c )\n";
         fout << " \\minimize equation\n";
-        fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << dice_pads[netlist[i].die_index - 1][netlist[i].pad_index].radius 
-                 << " n" << i << "c + " << ball_pos[netlist[i].ball_index].x << " )\n"
-                 << "  miner" << i << "y: m" << i << "y = POLY ( -" << dice_pads[netlist[i].die_index - 1][netlist[i].pad_index].radius 
-                 << " n" << i << "s + " << ball_pos[netlist[i].ball_index].y << " )\n";
+        fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << netlist[i].pad_pol.radius 
+                 << " n" << i << "c + " << netlist[i].ball_car.x << " )\n"
+                 << "  miner" << i << "y: m" << i << "y = POLY ( -" << netlist[i].pad_pol.radius
+                 << " n" << i << "s + " << netlist[i].ball_car.y << " )\n";
         fout << " \\absolute value\n";
         fout << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
                  << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
