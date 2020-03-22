@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
         return 0;
     }
     
-    chip.netlist_Content();
+    // chip.netlist_Content();
 
     // Output "netlist.lp" file
     std::ofstream LP_file;

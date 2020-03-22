@@ -21,10 +21,10 @@ Ball::Ball(std::size_t ball_num)
     }
 }
 
-int Ball::get_Ball_Index(std::string str) const
+size_t Ball::get_Ball_Index(std::string str) const
 {
     for (size_t t = 0; t < name.size(); t++)
         if (name[t] == str)
-            return static_cast<int>(t);
+            return t;
     return -1;
 }

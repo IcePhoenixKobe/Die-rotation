@@ -21,13 +21,13 @@ public:
 
     void convert_cart_to_polar();
 
-    int get_Amount() const { return pad_num; }
+    int get_Pad_Amount() const { return pad_num; }
     Cartesian get_Center() const { return center; }
     std::vector<std::string> get_Pad_Name() const { return pad_name; }
     std::vector<Cartesian> get_Cart_Position() const { return cart_position; }
     std::vector<Polar> get_Pol_Position() const { return pol_position; }
-    int get_Pad_Index(std::string str) const;
-    std::string get_Pad_Name(int index) const { return pad_name[index]; }
+    size_t get_Pad_Index(std::string str) const;
+    std::string get_Pad_Name(size_t index) const { return pad_name[index]; }
 
     void set_Amount(int num) { pad_num = num; }
     void set_Center(Cartesian xy) { center = xy; }

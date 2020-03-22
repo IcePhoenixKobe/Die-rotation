@@ -86,10 +86,10 @@ void Die::convert_cart_to_polar()
     }
 }
 
-int Die::get_Pad_Index(std::string str) const
+size_t Die::get_Pad_Index(std::string str) const
 {
     for (size_t t = 0; t < pad_name.size(); t++)
         if (pad_name[t] == str)
-            return static_cast<int>(t);
+            return t;
     return -1;
 }
