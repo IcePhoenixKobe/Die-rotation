@@ -2,24 +2,24 @@
 
 Chip::Chip()
 {
-    ball = Ball();
+    balls = Ball();
     dice.clear();
     netlist.clear();
 }
 
 void Chip::parse_PIN(std::ifstream& fin)
 {
-    int sub_str_pos = -1;
+	int sub_str_pos = -1;
 	bool isBall = false;
 	bool isDie = false;
-    size_t die_number = 0, dice_amount = 0;
-    std::string str;
-    std::string pin_name;       // pin name
-    std::vector<std::string> balls_name;
-    std::vector<Cartesian> balls_cartesian;
-    std::vector<Cartesian> dice_center;
-    std::vector<std::vector<std::string>> dice_pads_name;
-    std::vector<std::vector<Cartesian>> dice_pads_cartesian;
+	size_t die_number = 0, dice_amount = 0;
+	std::string str;
+	std::string pin_name;
+	std::vector<std::string> balls_name;
+	std::vector<Cartesian> balls_cartesian;
+	std::vector<Cartesian> dice_center;
+	std::vector<std::vector<std::string>> dice_pads_name;       // all pads name
+	std::vector<std::vector<Cartesian>> dice_pads_cartesian;    // all pads location
     
     str.clear();
     pin_name.clear();
@@ -115,9 +115,9 @@ void Chip::parse_PIN(std::ifstream& fin)
 	}
     
     // parse done and do set
-    ball = Ball(balls_name.size());
-    ball.set_All_Name(balls_name);
-    ball.set_All_Pos(balls_cartesian);
+    balls = Ball(balls_name.size());
+    balls.set_All_Name(balls_name);
+    balls.set_All_Pos(balls_cartesian);
     dice.resize(dice_amount);
     for (size_t i = 0; i < dice_amount; i++)
     {
@@ -129,7 +129,7 @@ void Chip::parse_PIN(std::ifstream& fin)
 
 	fin.close();
     std::cout << "parse PIN done\n";
-    ball_Content();
+    balls_Content();
     dice_Content();
     return;
 }
@@ -148,15 +148,35 @@ void Chip::parse_Netlist(std::ifstream& fin)
     // start to parse netlist
     while (getline(fin, str_temp))
 	{
-        if (str_temp.find(",") != std::string::npos)
+        if (str_temp.find(",") != std::string::npos)    // concatenate multi-line
         {
             str_temp.erase(str_temp.size() - 1, 1);
             str += str_temp;
         }
 		else
         {
+            std::string netlist_name;
+            std::stringstream ss;
+
+            netlist_name.clear();
+            ss.clear();
+
             str+=str_temp;
-            if (str.find("BGA") != std::string::npos && str.find("DIE") != std::string::npos)   // filter only one kind of pin
+            ss << str;
+            ss >> netlist_name;  // get netlist name
+
+            if (ignore_P_G && (
+                netlist_name.find("P") != std::string::npos || 
+                netlist_name.find("V") != std::string::npos || 
+                netlist_name.find("VCC") != std::string::npos || 
+                netlist_name.find("VDD") != std::string::npos || 
+                netlist_name.find("G") != std::string::npos || 
+                netlist_name.find("VSS") != std::string::npos
+                ))
+            {
+                std::cout << "ignore " << str <<std::endl;
+            }
+            else if (str.find("BGA") != std::string::npos && str.find("DIE") != std::string::npos)   // filter only one kind of pin
             {
                 Relationship rela_s;
                 std::string sub_str;
@@ -166,11 +186,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                 BGA_name.clear();
                 DIE_name.clear();
                 
-                std::stringstream ss;
-                ss.clear();
-                ss << str;
-                ss >> sub_str;  // get netlist name
-                rela_s.relation_name = sub_str;                 // set relation_name
+                rela_s.relation_name = netlist_name;                 // set relation_name
                 ss >> sub_str;  // get ";"
                 if (sub_str == ";")
                 {
@@ -179,6 +195,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                     BGAs.clear();
                     DIEs.clear();
 
+                    // Categories balls and dice
                     while (ss >> sub_str)
                     {
                         if (sub_str.find("BGA") != std::string::npos)
@@ -189,61 +206,106 @@ void Chip::parse_Netlist(std::ifstream& fin)
                             std::cout << "Warning: netlist has no BGA or DIE\n";
                     }
                     
-                    Cartesian center_of_gravity(0, 0);
-                    std::vector<size_t> balls_index;
-                    balls_index.clear();
-                    for (size_t i = 0; i < BGAs.size(); i++)
+                    // Decide to do combination or calculate center of gravity
+                    if (BGAs.size() * DIEs.size() <= 10)
                     {
-                        size_t index_temp = ball.get_Ball_Index(BGAs[i]);   // set ball_index
-                        if (index_temp == -1UL)
+                        // To do combination
+                        for (size_t i = 0; i < BGAs.size(); i++)
                         {
-                            std::cout << "error: Not found " << BGAs[i] << std::endl;
-                            exit(0);
-                        }
-                        else
-                        {
-                            center_of_gravity.x += ball.get_All_Pos().at(index_temp).x;
-                            center_of_gravity.y += ball.get_All_Pos().at(index_temp).y;
-                            balls_index.push_back(index_temp);
+                            rela_s.balls_index.clear();
+                            rela_s.balls_index.push_back(balls.get_Ball_Index(BGAs[i]));   // set ball_index
+                            if (rela_s.balls_index[0] == -1UL)
+                            {
+                                std::cout << "error: Not found " << BGAs[i] << std::endl;
+                                exit(0);
+                            }
+                            rela_s.ball_car.x += balls.get_All_Pos().at(rela_s.balls_index[0]).x;
+                            rela_s.ball_car.y += balls.get_All_Pos().at(rela_s.balls_index[0]).y;
+
+                            for (size_t j = 0; j < DIEs.size(); j++)
+                            {
+                                rela_s.dice_pads_index.resize(1);
+                                if (BGAs.size() != 1 || DIEs.size() != 1)   // if has multi-BGA or multi_DIE, netlist name append number
+                                    rela_s.relation_name = netlist_name + std::to_string(i) + "_" + std::to_string(j);
+                                std::stringstream string_cache(DIEs[j].substr(3, DIEs[j].find(".") - 3));
+                                string_cache >> rela_s.dice_pads_index[0].first;           // set die_index
+                                rela_s.dice_pads_index[0].second = dice[rela_s.dice_pads_index[0].first - 1].get_Pad_Index(DIEs[j]);   // set pad_index
+                                if (rela_s.dice_pads_index[0].second == -1UL)
+                                {
+                                    std::cout << "error: Not found " << DIEs[j] << std::endl;
+                                    exit(0);
+                                }
+                                rela_s.pad_car.x += dice[rela_s.dice_pads_index[0].first - 1].get_Cart_Position().at(rela_s.dice_pads_index[0].second).x;
+                                rela_s.pad_car.y += dice[rela_s.dice_pads_index[0].first - 1].get_Cart_Position().at(rela_s.dice_pads_index[0].second).y;
+                                rela_s.pad_pol.radius += dice[rela_s.dice_pads_index[0].first - 1].get_Pol_Position().at(rela_s.dice_pads_index[0].second).radius;
+                                rela_s.pad_pol.angle += dice[rela_s.dice_pads_index[0].first - 1].get_Pol_Position().at(rela_s.dice_pads_index[0].second).angle;
+                                netlist.push_back(rela_s);
+                            }
                         }
                     }
-                    center_of_gravity.x /= static_cast<double>(BGAs.size());
-                    center_of_gravity.y /= static_cast<double>(BGAs.size());
-                    rela_s.balls_index = balls_index;
-                    rela_s.ball_car = center_of_gravity;
-                    
-                    std::vector<std::pair<size_t, size_t>> dice_pads_index;
-                    dice_pads_index.clear();
-                    center_of_gravity = Cartesian(0, 0);
-                    for (size_t i = 0; i < DIEs.size(); i++)
+                    else
                     {
-                        std::pair<size_t, size_t> index_temp(-1UL, -1UL);
-                        std::stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
-                        string_cache >> index_temp.first;           // set die_index
-                        index_temp.second = dice[index_temp.first - 1].get_Pad_Index(DIEs[i]);   // set pad_index
-                        if (index_temp.second == -1UL)
+                        // To calculate the center of gravity
+                        Cartesian center_of_gravity(0, 0);
+                        std::vector<size_t> balls_index;
+                        balls_index.clear();
+                        for (size_t i = 0; i < BGAs.size(); i++)
                         {
-                            std::cout << "error: Not found " << DIEs[i] << std::endl;
-                            exit(0);
+                            size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
+                            if (index_temp == -1UL)
+                            {
+                                std::cout << "error: Not found " << BGAs[i] << std::endl;
+                                exit(0);
+                            }
+                            else
+                            {
+                                center_of_gravity.x += balls.get_All_Pos().at(index_temp).x;
+                                center_of_gravity.y += balls.get_All_Pos().at(index_temp).y;
+                                balls_index.push_back(index_temp);
+                            }
                         }
-                        else
+                        center_of_gravity.x /= static_cast<double>(BGAs.size());
+                        center_of_gravity.y /= static_cast<double>(BGAs.size());
+                        rela_s.balls_index = balls_index;
+                        rela_s.ball_car = center_of_gravity;
+                        
+                        std::vector<std::pair<size_t, size_t>> dice_pads_index;
+                        dice_pads_index.clear();
+                        center_of_gravity = Cartesian(0, 0);
+                        for (size_t i = 0; i < DIEs.size(); i++)
                         {
-                            center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
-                            center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
-                            dice_pads_index.push_back(index_temp);
+                            std::pair<size_t, size_t> index_temp(-1UL, -1UL);
+                            std::stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
+                            string_cache >> index_temp.first;           // set die_index
+                            index_temp.second = dice[index_temp.first - 1].get_Pad_Index(DIEs[i]);   // set pad_index
+                            if (index_temp.second == -1UL)
+                            {
+                                std::cout << "error: Not found " << DIEs[i] << std::endl;
+                                exit(0);
+                            }
+                            else
+                            {
+                                center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
+                                center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
+                                dice_pads_index.push_back(index_temp);
+                            }
+                            center_of_gravity.x /= static_cast<double>(DIEs.size());
+                            center_of_gravity.y /= static_cast<double>(DIEs.size());
+                            rela_s.dice_pads_index = dice_pads_index;
+                            rela_s.pad_car = center_of_gravity;
                         }
-                        center_of_gravity.x /= static_cast<double>(DIEs.size());
-                        center_of_gravity.y /= static_cast<double>(DIEs.size());
-                        rela_s.dice_pads_index = dice_pads_index;
-                        rela_s.pad_car = center_of_gravity;
+                        netlist.push_back(rela_s);
                     }
-                    netlist.push_back(rela_s);
                 }
                 else
                 {
                     std::cout << "error: string has no \";\"\n";
                     exit(0);
                 }
+            }
+            else
+            {
+                std::cout << "warring: string \"" << str << "\" has no \"BGA\" and \"DIE\"\n";
             }
             str.clear();
         }
@@ -284,14 +346,14 @@ void Chip::parse_Netlist(std::ifstream& fin)
     return;
 }
 
-void Chip::ball_Content()
+void Chip::balls_Content()
 {
     std::cout << "\n----------Ball content----------\n"
-     << "amount: " << ball.get_Amount() << std::endl;
+     << "amount: " << balls.get_Amount() << std::endl;
     std::vector<std::string> name;
-    name = ball.get_All_Name();
+    name = balls.get_All_Name();
     std::vector<Cartesian> position;
-    position = ball.get_All_Pos();
+    position = balls.get_All_Pos();
     for (size_t i = 0; i < position.size(); i++)
         std::cout << std::fixed << std::setprecision(3) << std::setw(4) << i + 1 << " " << std::setw(8) << name[i]
          << " x: " << std::setw(10) << position[i].x << ", y: " << std::setw(10) << position[i].y << std::endl;
@@ -334,7 +396,7 @@ void Chip::netlist_Content()
     {
         std::cout << std::setw(4) << i + 1 << " " << std::setw(10) << netlist[i].relation_name << ": ";
         for (size_t j = 0; j < netlist[i].balls_index.size(); j++)
-            std::cout << "\n\t" << ball.get_Ball_Name(netlist[i].balls_index[j]);
+            std::cout << "\n\t" << balls.get_Ball_Name(netlist[i].balls_index[j]);
         std::cout << "\n\t-->\n";
         for (size_t j = 0; j < netlist[i].dice_pads_index.size(); j++)
             std::cout << "\t" << dice[netlist[i].dice_pads_index[j].first - 1].get_Pad_Name(netlist[i].dice_pads_index[j].second) << std::endl;
@@ -395,15 +457,18 @@ size_t Chip::get_Netlist_Index(std::string str) const
 void Chip::output_LP_File(std::ofstream& fout)
 {
     // Minimize
-    fout << "Minimize\n";
-    for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  a0x + a0y";
-        else {
-            fout << " + a" << i << "x + a" << i << "y";
+    if (min_output)
+    {
+        fout << "Minimize\n";
+        for (size_t i = 0; i < netlist.size(); i++) {
+            if (i == 0) fout << "  a0x + a0y";
+            else {
+                fout << " + a" << i << "x + a" << i << "y";
+            }
         }
+        fout << "\n";
     }
-    fout << "\n";
-
+    
     // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
@@ -420,7 +485,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     for (size_t i = 0; i < dice.size() && i < dice_pads.size(); i++)
         dice_pads[i] = dice[i].get_Pol_Position();
     fout << "Bounds\n";
-    fout << "  0 <= x <= " << 2 * M_PI << "\n";
+    fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
                  << "  2r" << i << " = " << 2 * netlist[i].pad_pol.radius << "\n" 
@@ -428,33 +493,35 @@ void Chip::output_LP_File(std::ofstream& fout)
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 
                  << "  s" << i << "p free\n" 
-                 << "  c" << i << "p free\n" 
-                 << "  m" << i << "x free\n" 
-                 << "  m" << i << "y free\n" 
-                 << "  a" << i << "x free\n" 
-                 << "  a" << i << "y free\n";
+                 << "  c" << i << "p free\n" ;
+        if (min_output)
+            fout << "  m" << i << "x free\n" << "  m" << i << "y free\n"
+                     << "  a" << i << "x free\n" << "  a" << i << "y free\n";
     }
 
     // General Constraint
     std::vector<Cartesian> ball_pos;
-    ball_pos = ball.get_All_Pos();
+    ball_pos = balls.get_All_Pos();
     fout << "General Constraint\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << "\\net" << i << "\n";
         fout << " \\basic equation\n";
-        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 x + " << netlist[i].pad_pol.angle << " )\n" 
+        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << netlist[i].pad_pol.angle << " )\n" 
                  << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
                  << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
                  << "  sin" << i << ": s" << i << "p = POLY ( "  << ( netlist[i].ball_car.x + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x ) << " n" << i << "s )\n"
                  << "  cos" << i << ": c" << i << "p = POLY ( " << ( netlist[i].ball_car.y + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y ) << " n" << i << "c )\n";
-        fout << " \\minimize equation\n";
-        fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << netlist[i].pad_pol.radius 
+        if (min_output)
+        {
+            fout << " \\minimize equation\n";
+            fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << netlist[i].pad_pol.radius 
                  << " n" << i << "c + " << netlist[i].ball_car.x << " )\n"
                  << "  miner" << i << "y: m" << i << "y = POLY ( -" << netlist[i].pad_pol.radius
                  << " n" << i << "s + " << netlist[i].ball_car.y << " )\n";
-        fout << " \\absolute value\n";
-        fout << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
-                 << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
+            fout << " \\absolute value\n"
+                     << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
+                     << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
+        }
     }
 
     // End

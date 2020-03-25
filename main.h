@@ -9,7 +9,7 @@
 #include<sstream>
 #include<utility>
 #include<math.h>
-#include<string>
+#include<string.h>
 #include<vector>
 #include<cmath>
 
@@ -17,6 +17,11 @@
 // #include <stdlib.h>
 // #include <map>
 // #include <set>
+
+// whether output minimize in LP file
+extern bool min_output;
+// whether ignore the power(P/V/VCC/VDD) and ground(G/VSS) in netlist file
+extern bool ignore_P_G;
 
 // Cartesian coordinate system
 typedef struct Cartesian
@@ -59,5 +64,7 @@ typedef struct Relationship {
         ball_car = par_ball;
     }
 }Relationship;
+
+void check_argument(int, char*[]);
 
 #endif

@@ -8,7 +8,7 @@
 class Chip
 {
 private:
-    Ball ball;
+    Ball balls;
     std::vector<Die> dice;
     std::vector<Relationship> netlist;
 
@@ -20,7 +20,7 @@ public:
 
     // chip information
 
-    void ball_Content();
+    void balls_Content();
     void dice_Content();
     void netlist_Content();
     /*====================*/
@@ -32,8 +32,8 @@ public:
     /*====================*/
 
     // get ball's information
-    int get_Ball_Amount() const { return ball.get_Amount(); }
-    std::vector<Cartesian> get_Ball_Pos() const { return ball.get_All_Pos(); }
+    int get_Ball_Amount() const { return balls.get_Amount(); }
+    std::vector<Cartesian> get_Ball_Pos() const { return balls.get_All_Pos(); }
 
     // get dice's information
     int get_Die_Pad_Amount(int i) const { return dice[i].get_Pad_Amount(); }
@@ -45,8 +45,8 @@ public:
     size_t get_Netlist_Index(std::string) const;
 
     // set the data of ball
-    void set_Ball_Amount(int num) {ball.set_Amount(num); }
-    void set_Ball_Pos(std::vector<Cartesian> pos) { ball.set_All_Pos(pos); }
+    void set_Ball_Amount(int num) {balls.set_Amount(num); }
+    void set_Ball_Pos(std::vector<Cartesian> pos) { balls.set_All_Pos(pos); }
 
     // set the data of dice
     void set_Die_Amount(int i, int num) { dice[i].set_Amount(num); }
