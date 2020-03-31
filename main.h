@@ -5,13 +5,15 @@
 //#define NDEBUG
 #include<assert.h>
 #include<fstream>
- #include<iomanip>
+#include<iomanip>
 #include<sstream>
 #include<utility>
 #include<math.h>
 #include<string.h>
 #include<vector>
 #include<cmath>
+
+#include"gtk_cairo.h"
 
 // for parser.cpp
 // #include <stdlib.h>
@@ -22,6 +24,10 @@
 extern bool min_output;
 // whether ignore the power(P/V/VCC/VDD) and ground(G/VSS) in netlist file
 extern bool ignore_P_G;
+// The index of argument that point next one argument is LP file name
+extern int LP_out;
+// GUI
+extern bool GUI;
 
 // Cartesian coordinate system
 typedef struct Cartesian
@@ -66,5 +72,6 @@ typedef struct Relationship {
 }Relationship;
 
 void check_argument(int, char*[]);
+Cartesian CG(std::vector<Cartesian>);
 
-#endif
+#endif  // MAIN_H

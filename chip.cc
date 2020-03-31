@@ -128,9 +128,7 @@ void Chip::parse_PIN(std::ifstream& fin)
     }
 
 	fin.close();
-    std::cout << "parse PIN done\n";
-    balls_Content();
-    dice_Content();
+    std::cout << "parse PIN done\n\n";
     return;
 }
 
@@ -146,7 +144,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
 		getline(fin, str_temp);
 	} while (str_temp.find("$NETS") == std::string::npos);   // if find "$NET"
     // start to parse netlist
-    while (getline(fin, str_temp))
+    while (getline(fin, str_temp) && str_temp.find("$END") == std::string::npos)
 	{
         if (str_temp.find(",") != std::string::npos)    // concatenate multi-line
         {
@@ -340,9 +338,8 @@ void Chip::parse_Netlist(std::ifstream& fin)
         //std::cout << "\ttheta = " << pol_position[i].angle << std::endl;
     }
 
-    std::cout << "parse netlist done: Amount of netlist = " << netlist.size() <<std::endl;
     fin.close();
-    netlist_Content();
+    std::cout << "parse netlist done\n";
     return;
 }
 
@@ -434,7 +431,15 @@ int Chip::parser(int argc, char** argv)
 		return -1;
 	}
     parse_Netlist(netlist_fin);
-
+/*
+    Cartesian position_sum;
+    for (size_t i = 0; i < netlist.size(); i++)
+    {
+        position_sum.x += netlist[i].ball_car.x + netlist[i].pad_car.x;
+        position_sum.y += netlist[i].ball_car.y + netlist[i].pad_car.y;
+    }
+    dice[0].set_Center(Cartesian(position_sum.x / static_cast<double>(netlist.size()), position_sum.y / static_cast<double>(netlist.size())));
+*/
     /*
     std::cout << "number of netlist: " << netlist.size() << std::endl;
     for (size_t index = 0; index < netlist.size(); index++)
@@ -442,6 +447,9 @@ int Chip::parser(int argc, char** argv)
         std::cout << netlist[index].relation_name << " : " << netlist[index].ball_index << " --> " << netlist[index].die_pad_index << std::endl;
     }
     */
+    balls_Content();
+    dice_Content();
+    netlist_Content();
     
     return 0;
 }
@@ -472,9 +480,9 @@ void Chip::output_LP_File(std::ofstream& fout)
     // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  goal: [ 2r0 * s0p ] - [ 2r0 * c0p ]";
+        if (i == 0) fout << "  goal: " << netlist[i].pad_pol.radius << " s0p - " << netlist[i].pad_pol.radius << " c0p";
         else {
-            fout << " + [ 2r" << i << " * s" << i << "p ] - [ 2r" << i << " * c" << i << "p ]";
+            fout << " + " << netlist[i].pad_pol.radius << " s" << i << "p - " << netlist[i].pad_pol.radius << " c" << i << "p";
         }
     }
     fout << " = 0\n";
@@ -488,7 +496,6 @@ void Chip::output_LP_File(std::ofstream& fout)
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
-                 << "  2r" << i << " = " << 2 * netlist[i].pad_pol.radius << "\n" 
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 

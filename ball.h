@@ -24,4 +24,4 @@ public:
     void set_All_Pos(std::vector<Cartesian> pos) { position = pos; }
 };
 
-#endif
+#endif  // BALL_H

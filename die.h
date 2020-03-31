@@ -36,4 +36,4 @@ public:
     void set_Pol_Pos(std::vector<Polar> pol_pos) { pol_position = pol_pos; }
 };
 
-#endif
+#endif  // DIE_H

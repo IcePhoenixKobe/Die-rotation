@@ -58,4 +58,4 @@ public:
     void output_LP_File(std::ofstream&);
 };
 
-#endif
+#endif  // CHIP_H
