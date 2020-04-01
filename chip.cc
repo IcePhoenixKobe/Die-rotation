@@ -464,8 +464,7 @@ size_t Chip::get_Netlist_Index(std::string str) const
 
 void Chip::output_LP_File(std::ofstream& fout)
 {
-    // original lp file
-    
+    /*
     // Minimize
     if (min_output)
     {
@@ -482,9 +481,9 @@ void Chip::output_LP_File(std::ofstream& fout)
     // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  goal: " << netlist[i].pad_pol.radius << " s0p - " << netlist[i].pad_pol.radius << " c0p";
+        if (i == 0) fout << "  goal: [ r0_2 * s0p ] - [ r0_2 * c0p ]";
         else {
-            fout << " + " << netlist[i].pad_pol.radius << " s" << i << "p - " << netlist[i].pad_pol.radius << " c" << i << "p";
+            fout << " + [ r" << i << "_2 * s" << i << "p ] - [ r" << i << "_2 * c" << i << "p ]";
         }
     }
     fout << " = 0\n";
@@ -498,6 +497,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
+                 << "  r" << i << "_2 = " << 2 * netlist[i].pad_pol.radius << "\n"
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 
@@ -532,32 +532,20 @@ void Chip::output_LP_File(std::ofstream& fout)
                      << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
         }
     }
-    
-   /*
-   // other lp file
-   // Minimize
-    if (min_output)
-    {
-        fout << "Minimize\n";
-        for (size_t i = 0; i < netlist.size(); i++) {
-            if (i == 0) fout << "  a0x + a0y";
-            else {
-                fout << " + a" << i << "x + a" << i << "y";
-            }
-        }
-        fout << "\n";
-    }
-    
-    // Subject To
+    */
+
+   /* other LP file */
+   // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  goal: " << netlist[i].pad_pol.radius << " s0p - " << netlist[i].pad_pol.radius << " c0p";
+        double radius_2 = 2.0 * netlist[i].pad_pol.radius;
+        if (i == 0) fout << "  goal: " << radius_2 << " s0p - " << radius_2 << " c0p";
         else {
-            fout << " + " << netlist[i].pad_pol.radius << " s" << i << "p - " << netlist[i].pad_pol.radius << " c" << i << "p";
+            fout << " + " << radius_2 << " s" << i << "p - " << radius_2 << " c" << i << "p";
         }
     }
     fout << " = 0\n";
-    
+
     // Bounds
     std::vector<std::vector<Polar>> dice_pads;
     dice_pads.resize(dice.size());
@@ -569,39 +557,14 @@ void Chip::output_LP_File(std::ofstream& fout)
         fout << " \\net" << i << "\n"
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
-                 << "  n" << i << "c free\n"
+                 << "  n" << i << "c free\n" 
                  << "  s" << i << "p free\n" 
-                 << "  c" << i << "p free\n";
+                 << "  c" << i << "p free\n" ;
         if (min_output)
             fout << "  m" << i << "x free\n" << "  m" << i << "y free\n"
                      << "  a" << i << "x free\n" << "  a" << i << "y free\n";
     }
-
-    // General Constraint
-    std::vector<Cartesian> ball_pos;
-    ball_pos = balls.get_All_Pos();
-    fout << "General Constraint\n";
-    for (size_t i = 0; i < netlist.size(); i++) {
-        fout << "\\net" << i << "\n";
-        fout << " \\basic equation\n";
-        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << netlist[i].pad_pol.angle << " )\n" 
-                 << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
-                 << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
-                  << "  sin" << i << ": s" << i << "p = POLY ( "  << ( netlist[i].ball_car.x + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x ) << " n" << i << "s )\n"
-                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( netlist[i].ball_car.y + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y ) << " n" << i << "c )\n";
-        if (min_output)
-        {
-            fout << " \\minimize equation\n";
-            fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << netlist[i].pad_pol.radius 
-                 << " n" << i << "c + " << netlist[i].ball_car.x + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x << " )\n"
-                 << "  miner" << i << "y: m" << i << "y = POLY ( -" << netlist[i].pad_pol.radius
-                 << " n" << i << "s + " << netlist[i].ball_car.y + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y << " )\n";
-            fout << " \\absolute value\n"
-                     << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
-                     << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
-        }
-    }
-    */
+    
     // End
     fout << "End";
     return;
