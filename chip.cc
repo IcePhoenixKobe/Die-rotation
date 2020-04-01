@@ -480,9 +480,9 @@ void Chip::output_LP_File(std::ofstream& fout)
     // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  goal: " << netlist[i].pad_pol.radius << " s0p - " << netlist[i].pad_pol.radius << " c0p";
+        if (i == 0) fout << "  goal: [ r0_2 * s0p ] - [ r0_2 * c0p ]";
         else {
-            fout << " + " << netlist[i].pad_pol.radius << " s" << i << "p - " << netlist[i].pad_pol.radius << " c" << i << "p";
+            fout << " + [ r" << i << "_2 * s" << i << "p ] - [ r" << i << "_2 * c" << i << "p ]";
         }
     }
     fout << " = 0\n";
@@ -496,6 +496,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
+                 << "  r" << i << "_2 = " << 2 * netlist[i].pad_pol.radius << "\n"
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 
