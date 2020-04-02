@@ -34,7 +34,7 @@ typedef struct Cartesian
 {
     double x;
     double y;
-    Cartesian() : x(0), y(0) {}
+    Cartesian() : x(0.0), y(0.0) {}
     Cartesian(double par_x, double par_y) : x(par_x), y(par_y) {}
 } Cartesian;
 
@@ -43,7 +43,7 @@ typedef struct Polar
 {
     double radius;
     double angle;
-    Polar() : radius(0), angle(0) {}
+    Polar() : radius(0.0), angle(0.0) {}
     Polar(double ra, double an) : radius(ra), angle(an) {}
 } Polar;
 

@@ -9,7 +9,6 @@ Chip::Chip()
 
 void Chip::parse_PIN(std::ifstream& fin)
 {
-	int sub_str_pos = -1;
 	bool isBall = false;
 	bool isDie = false;
 	size_t die_number = 0, dice_amount = 0;
@@ -58,8 +57,7 @@ void Chip::parse_PIN(std::ifstream& fin)
             }
         }
         
-		sub_str_pos = str.find("location-xy:");
-		if (sub_str_pos != -1 && (isBall || isDie)) // if found location
+		if (str.find("location-xy:") != std::string::npos && (isBall || isDie)) // if found location
 		{
             Cartesian pin_cartesian;
             pin_cartesian.x = 0;
@@ -90,7 +88,7 @@ void Chip::parse_PIN(std::ifstream& fin)
                 {
                     while (dice_amount < die_number)
                     {
-                        dice_center.push_back(Cartesian(0, 0));
+                        dice_center.push_back(Cartesian(0.0, 0.0));
                         std::vector<std::string> pads_name;
                         std::vector<Cartesian> pads_cartesian;
                         if (dice_amount == die_number - 1)
@@ -109,6 +107,23 @@ void Chip::parse_PIN(std::ifstream& fin)
                 std::cout << "error: isBall and isDie at the same times.\n";
                 exit(0);
             }
+        }
+        
+        if (str.find("Symbol:") != std::string::npos && isDie 
+            && dice_center[die_number - 1].x == 0.0 && dice_center[die_number - 1].y == 0.0) // if found die center
+		{
+            std::cout << "pin_name = " << pin_name;
+            size_t sub_str_index = str.find("at");
+            str = str.substr(sub_str_index + 3);
+            std::stringstream ss;
+            ss << str;
+            ss >> dice_center[die_number - 1].x;
+            ss >> str;  // ignore comma(', ')
+            ss >> dice_center[die_number - 1].y;
+        }
+
+        if (str.find("~") != std::string::npos)
+        {
             isBall = false;
             isDie = false;
         }
@@ -431,7 +446,7 @@ int Chip::parser(int argc, char** argv)
 		return -1;
 	}
     parse_Netlist(netlist_fin);
-/*
+    /*
     Cartesian position_sum;
     for (size_t i = 0; i < netlist.size(); i++)
     {
@@ -439,7 +454,7 @@ int Chip::parser(int argc, char** argv)
         position_sum.y += netlist[i].ball_car.y + netlist[i].pad_car.y;
     }
     dice[0].set_Center(Cartesian(position_sum.x / static_cast<double>(netlist.size()), position_sum.y / static_cast<double>(netlist.size())));
-*/
+    */
     /*
     std::cout << "number of netlist: " << netlist.size() << std::endl;
     for (size_t index = 0; index < netlist.size(); index++)
@@ -464,8 +479,8 @@ size_t Chip::get_Netlist_Index(std::string str) const
 
 void Chip::output_LP_File(std::ofstream& fout)
 {
-    /*
-    // Minimize
+   // other LP file
+   // Minimize
     if (min_output)
     {
         fout << "Minimize\n";
@@ -477,13 +492,14 @@ void Chip::output_LP_File(std::ofstream& fout)
         }
         fout << "\n";
     }
-    
-    // Subject To
+
+   // Subject To
     fout << "Subject To\n";
     for (size_t i = 0; i < netlist.size(); i++) {
-        if (i == 0) fout << "  goal: [ r0_2 * s0p ] - [ r0_2 * c0p ]";
+        double radius = netlist[i].pad_pol.radius;
+        if (i == 0) fout << "  goal: " << radius << " s0p - " << radius << " c0p";
         else {
-            fout << " + [ r" << i << "_2 * s" << i << "p ] - [ r" << i << "_2 * c" << i << "p ]";
+            fout << " + " << radius << " s" << i << "p - " << radius << " c" << i << "p";
         }
     }
     fout << " = 0\n";
@@ -497,7 +513,6 @@ void Chip::output_LP_File(std::ofstream& fout)
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < netlist.size(); i++) {
         fout << " \\net" << i << "\n"
-                 << "  r" << i << "_2 = " << 2 * netlist[i].pad_pol.radius << "\n"
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
                  << "  n" << i << "c free\n" 
@@ -532,39 +547,7 @@ void Chip::output_LP_File(std::ofstream& fout)
                      << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
         }
     }
-    */
 
-   /* other LP file */
-   // Subject To
-    fout << "Subject To\n";
-    for (size_t i = 0; i < netlist.size(); i++) {
-        double radius_2 = 2.0 * netlist[i].pad_pol.radius;
-        if (i == 0) fout << "  goal: " << radius_2 << " s0p - " << radius_2 << " c0p";
-        else {
-            fout << " + " << radius_2 << " s" << i << "p - " << radius_2 << " c" << i << "p";
-        }
-    }
-    fout << " = 0\n";
-
-    // Bounds
-    std::vector<std::vector<Polar>> dice_pads;
-    dice_pads.resize(dice.size());
-    for (size_t i = 0; i < dice.size() && i < dice_pads.size(); i++)
-        dice_pads[i] = dice[i].get_Pol_Position();
-    fout << "Bounds\n";
-    fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
-    for (size_t i = 0; i < netlist.size(); i++) {
-        fout << " \\net" << i << "\n"
-                 << "  n" << i << "d free\n" 
-                 << "  n" << i << "s free\n" 
-                 << "  n" << i << "c free\n" 
-                 << "  s" << i << "p free\n" 
-                 << "  c" << i << "p free\n" ;
-        if (min_output)
-            fout << "  m" << i << "x free\n" << "  m" << i << "y free\n"
-                     << "  a" << i << "x free\n" << "  a" << i << "y free\n";
-    }
-    
     // End
     fout << "End";
     return;
