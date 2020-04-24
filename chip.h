@@ -56,6 +56,7 @@ public:
     
     // file output
     void output_LP_File(std::ofstream&);
+    void output_M_File(std::ofstream&, char*);
 };
 
 #endif  // CHIP_H

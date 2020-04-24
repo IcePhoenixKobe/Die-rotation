@@ -24,8 +24,10 @@
 extern bool min_output;
 // whether ignore the power(P/V/VCC/VDD) and ground(G/VSS) in netlist file
 extern bool ignore_P_G;
-// The index of argument that point next one argument is LP file name
+// The index of argument that point next one argument is .lp file name
 extern int LP_out;
+// The index of argument that point next one argument is .M file name
+extern int M_out;
 // GUI
 extern bool GUI;
 
@@ -34,7 +36,7 @@ typedef struct Cartesian
 {
     double x;
     double y;
-    Cartesian() : x(0), y(0) {}
+    Cartesian() : x(0.0), y(0.0) {}
     Cartesian(double par_x, double par_y) : x(par_x), y(par_y) {}
 } Cartesian;
 
@@ -43,7 +45,7 @@ typedef struct Polar
 {
     double radius;
     double angle;
-    Polar() : radius(0), angle(0) {}
+    Polar() : radius(0.0), angle(0.0) {}
     Polar(double ra, double an) : radius(ra), angle(an) {}
 } Polar;
 

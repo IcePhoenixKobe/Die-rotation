@@ -2,6 +2,7 @@
 #include"chip.h"
 
 int LP_out = -1;
+int M_out = -1;
 bool GUI = false;
 bool min_output = true;
 bool ignore_P_G = false;
@@ -40,6 +41,23 @@ int main(int argc, char* argv[])
         std::cout << "\n----------output \"" << argv[LP_out + 1] << "\" file done!----------\n";
     }
 
+    if (M_out != -1)
+    {
+        std::ofstream M_file;
+        M_file.clear();
+
+        M_file.open(argv[M_out + 1]);
+        if (M_file.is_open()) {
+            chip.output_M_File(M_file, argv[M_out + 1]);
+        }
+        else {
+            std::cout << "open file \"" << argv[M_out + 1] << "\" error.\n";
+        }
+        
+        M_file.close();
+        std::cout << "\n----------output \"" << argv[M_out + 1] << "\" file done!----------\n";
+    }
+
     if (GUI)
     {
         std::cout << "no graph haha!\n";
@@ -53,12 +71,14 @@ void check_argument(int argc, char* argv[])
 {
     for (int i = 3; i < argc; i++)
     {
-        if (strcmp(argv[i], "-m") == 0)
+        if (strcmp(argv[i], "-mi") == 0)
             min_output = false;
         if (strcmp(argv[i], "-PG") == 0)
             ignore_P_G = true;
         if (strcmp(argv[i], "-LP") == 0)
             LP_out = i;
+        if (strcmp(argv[i], "-M") == 0)
+            M_out = i;
         if (strcmp(argv[i], "-G") == 0)
             GUI = true;
     }
