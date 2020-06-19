@@ -142,107 +142,67 @@ void Chip::parse_Netlist(std::ifstream& fin)
     do
 	{
 		getline(fin, str_temp);
-	} while (str_temp.find("$NETS") == std::string::npos);   // if find "$NET"
-    // start to parse netlist
-    while (getline(fin, str_temp) && str_temp.find("$END") == std::string::npos)
-	{
-        if (str_temp.find(",") != std::string::npos)    // concatenate multi-line
+	} while (str_temp.find("$NETS") == std::string::npos && !fin.eof());   // if find "$NET"
+
+    if (!fin.eof()) // found $NET
+    {
+        // start to parse netlist
+        while (getline(fin, str_temp) && str_temp.find("$END") == std::string::npos)
         {
-            str_temp.erase(str_temp.size() - 1, 1);
-            str += str_temp;
-        }
-		else
-        {
-            std::string netlist_name;
-            std::stringstream ss;
-
-            netlist_name.clear();
-            ss.clear();
-
-            str+=str_temp;
-            ss << str;
-            ss >> netlist_name;  // get netlist name
-
-            if (ignore_P_G && (
-                netlist_name.find("P") != std::string::npos || 
-                netlist_name.find("V") != std::string::npos || 
-                netlist_name.find("VCC") != std::string::npos || 
-                netlist_name.find("VDD") != std::string::npos || 
-                netlist_name.find("G") != std::string::npos || 
-                netlist_name.find("VSS") != std::string::npos
-                ))
+            if (str_temp.find(",") != std::string::npos)    // concatenate multi-line
             {
-                std::cout << "ignore " << str <<std::endl;
+                str_temp.erase(str_temp.size() - 1, 1);
+                str += str_temp;
             }
-            else if (str.find("BGA") != std::string::npos && str.find("DIE") != std::string::npos)   // filter only one kind of pin
+            else
             {
-                Relationship rela_s;
-                std::string sub_str;
-                std::string BGA_name;
-                std::string DIE_name;
-                sub_str.clear();
-                BGA_name.clear();
-                DIE_name.clear();
-                
-                rela_s.relation_name = netlist_name;                 // set relation_name
-                ss >> sub_str;  // get ";"
-                if (sub_str == ";")
+                std::string netlist_name;
+                std::stringstream ss;
+
+                netlist_name.clear();
+                ss.clear();
+
+                str+=str_temp;
+                ss << str;
+                ss >> netlist_name;  // get netlist name
+
+                if (ignore_P_G && (
+                    netlist_name.find("P") != std::string::npos || 
+                    netlist_name.find("V") != std::string::npos || 
+                    netlist_name.find("VCC") != std::string::npos || 
+                    netlist_name.find("VDD") != std::string::npos || 
+                    netlist_name.find("G") != std::string::npos || 
+                    netlist_name.find("VSS") != std::string::npos
+                    ))
                 {
-                    std::vector<std::string> BGAs;
-                    std::vector<std::string> DIEs;
-                    BGAs.clear();
-                    DIEs.clear();
-
-                    // Categories balls and dice
-                    while (ss >> sub_str)
-                    {
-                        if (sub_str.find("BGA") != std::string::npos)
-                            BGAs.push_back(sub_str);
-                        else if (sub_str.find("DIE") != std::string::npos)
-                            DIEs.push_back(sub_str);
-                        else
-                            std::cout << "Warning: netlist has no BGA or DIE\n";
-                    }
+                    std::cout << "ignore " << str <<std::endl;
+                }
+                else if (str.find("BGA") != std::string::npos && str.find("DIE") != std::string::npos)   // filter only one kind of pin
+                {
+                    Relationship rela_s;
+                    std::string sub_str;
+                    sub_str.clear();
                     
-                    // Decide to do combination or calculate center of gravity
-                    if (BGAs.size() * DIEs.size() <= 10)
+                    rela_s.relation_name = netlist_name;                 // set relation_name
+                    ss >> sub_str;  // get ";"
+                    if (sub_str == ";")
                     {
-                        // To do combination
-                        for (size_t i = 0; i < BGAs.size(); i++)
-                        {
-                            rela_s.balls_index.clear();
-                            rela_s.balls_index.push_back(balls.get_Ball_Index(BGAs[i]));   // set ball_index
-                            if (rela_s.balls_index[0] == -1UL)
-                            {
-                                std::cout << "error: Not found " << BGAs[i] << std::endl;
-                                exit(0);
-                            }
-                            rela_s.ball_car.x += balls.get_All_Pos().at(rela_s.balls_index[0]).x;
-                            rela_s.ball_car.y += balls.get_All_Pos().at(rela_s.balls_index[0]).y;
+                        std::vector<std::string> BGAs;
+                        std::vector<std::string> DIEs;
+                        BGAs.clear();
+                        DIEs.clear();
 
-                            for (size_t j = 0; j < DIEs.size(); j++)
-                            {
-                                rela_s.dice_pads_index.resize(1);
-                                if (BGAs.size() != 1 || DIEs.size() != 1)   // if has multi-BGA or multi_DIE, netlist name append number
-                                    rela_s.relation_name = netlist_name + std::to_string(i) + "_" + std::to_string(j);
-                                std::stringstream string_cache(DIEs[j].substr(3, DIEs[j].find(".") - 3));
-                                string_cache >> rela_s.dice_pads_index[0].first;           // set die_index
-                                rela_s.dice_pads_index[0].second = dice[rela_s.dice_pads_index[0].first - 1].get_Pad_Index(DIEs[j]);   // set pad_index
-                                if (rela_s.dice_pads_index[0].second == -1UL)
-                                {
-                                    std::cout << "error: Not found " << DIEs[j] << std::endl;
-                                    exit(0);
-                                }
-                                rela_s.pad_car.x += dice[rela_s.dice_pads_index[0].first - 1].get_Cart_Position().at(rela_s.dice_pads_index[0].second).x;
-                                rela_s.pad_car.y += dice[rela_s.dice_pads_index[0].first - 1].get_Cart_Position().at(rela_s.dice_pads_index[0].second).y;
-                                rela_s.pad_pol.radius += dice[rela_s.dice_pads_index[0].first - 1].get_Pol_Position().at(rela_s.dice_pads_index[0].second).radius;
-                                rela_s.pad_pol.angle += dice[rela_s.dice_pads_index[0].first - 1].get_Pol_Position().at(rela_s.dice_pads_index[0].second).angle;
-                                netlist.push_back(rela_s);
-                            }
+                        // Categories balls and dice
+                        while (ss >> sub_str)
+                        {
+                            if (sub_str.find("BGA") != std::string::npos)
+                                BGAs.push_back(sub_str);
+                            else if (sub_str.find("DIE") != std::string::npos)
+                                DIEs.push_back(sub_str);
+                            else
+                                std::cout << "Warning: netlist has no BGA or DIE\n";
                         }
-                    }
-                    else
-                    {
+                        
                         // To calculate the center of gravity
                         Cartesian center_of_gravity(0, 0);
                         std::vector<size_t> balls_index;
@@ -294,20 +254,149 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         }
                         netlist.push_back(rela_s);
                     }
+                    else
+                    {
+                        std::cout << "error: string has no \";\"\n";
+                        exit(0);
+                    }
                 }
                 else
                 {
-                    std::cout << "error: string has no \";\"\n";
-                    exit(0);
+                    std::cout << "warring: string \"" << str.substr(0, str.size() - 1) << "\" has no BGA and DIE\n";
+                }
+                str.clear();
+            }
+        }
+    }
+    else
+    {
+        // start to parse multi_netlist
+        std::cout << "There is no \"$NET\" in netlist file\n";
+        std::cout << "Use Net Name to parse netlist file\n";
+        fin.clear();
+        fin.seekg(std::ios::beg);   // Seek to begin of fin
+
+        bool isNet = false;
+        std::string end_net = "  No connections remaining";
+        std::string netlist_name;
+        Relationship rela_s;
+        std::vector<std::string> BGAs;
+        std::vector<std::string> DIEs;
+
+        netlist_name.clear();
+        BGAs.clear();
+        DIEs.clear();
+
+        while (getline(fin, str))
+        {
+            if (str.find("Net Name:") != std::string::npos)
+            {
+                str.erase(0, 23);
+                std::stringstream ss;
+                ss.clear();
+                netlist_name.clear();
+                ss << str;
+                ss >> netlist_name;  // get netlist name
+                
+                if (ignore_P_G && (
+                    netlist_name.find("P") != std::string::npos || 
+                    netlist_name.find("V") != std::string::npos || 
+                    netlist_name.find("VCC") != std::string::npos || 
+                    netlist_name.find("VDD") != std::string::npos || 
+                    netlist_name.find("G") != std::string::npos || 
+                    netlist_name.find("VSS") != std::string::npos
+                    ))
+                {
+                    std::cout << "ignore " << str <<std::endl;
+                }
+                else
+                {                    
+                    rela_s = Relationship();
+                    rela_s.relation_name = netlist_name;                 // set relation_name
+                    //std::cout << rela_s.relation_name << "\t\n";
+                    while(getline(fin, str) && str.find("---") == std::string::npos);
+                    isNet = true;
                 }
             }
-            else
-            {
-                std::cout << "warring: string \"" << str << "\" has no \"BGA\" and \"DIE\"\n";
+            
+		    if (isNet)
+		    {
+                BGAs.clear();
+                DIEs.clear();
+                while(getline(fin,str) && (str.find("BGA")  != std::string::npos || str.find("DIE")  != std::string::npos))
+                {
+                    std::stringstream ss;
+                    ss.clear();
+                    ss << str;
+                    ss >> str;  // get pin name
+
+                    if (str.find("BGA") != std::string::npos)
+                        BGAs.push_back(str);
+                    else
+                        DIEs.push_back(str);
+                }
+                getline(fin,str);
+                if (str.find("No connections remaining") == std::string::npos)
+                    std::cout << "Warning: netlist " << netlist_name << " has no BGA or DIE, and may have some pin miss catch.\n";
+                
+                // Decide to do combination or calculate center of gravity
+                if (BGAs.size() != 0 && DIEs.size() != 0)
+                {
+                    // To calculate the center of gravity
+                    Cartesian center_of_gravity(0, 0);
+                    std::vector<size_t> balls_index;
+                    balls_index.clear();
+                    for (size_t i = 0; i < BGAs.size(); i++)
+                    {
+                        size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
+                        if (index_temp == -1UL)
+                        {
+                            std::cout << "error: Not found " << BGAs[i] << std::endl;
+                            exit(0);
+                        }
+                        else
+                        {
+                            center_of_gravity.x += balls.get_All_Pos().at(index_temp).x;
+                            center_of_gravity.y += balls.get_All_Pos().at(index_temp).y;
+                            balls_index.push_back(index_temp);
+                        }
+                    }
+                    center_of_gravity.x /= static_cast<double>(BGAs.size());
+                    center_of_gravity.y /= static_cast<double>(BGAs.size());
+                    rela_s.balls_index = balls_index;
+                    rela_s.ball_car = center_of_gravity;
+                    
+                    std::vector<std::pair<size_t, size_t>> dice_pads_index;
+                    dice_pads_index.clear();
+                    center_of_gravity = Cartesian(0, 0);
+                    for (size_t i = 0; i < DIEs.size(); i++)
+                    {
+                        std::pair<size_t, size_t> index_temp(-1UL, -1UL);
+                        std::stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
+                        string_cache >> index_temp.first;           // set die_index
+                        index_temp.second = dice[index_temp.first - 1].get_Pad_Index(DIEs[i]);   // set pad_index
+                        if (index_temp.second == -1UL)
+                        {
+                            std::cout << "error: Not found " << DIEs[i] << std::endl;
+                            exit(0);
+                        }
+                        else
+                        {
+                            center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
+                            center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
+                            dice_pads_index.push_back(index_temp);
+                        }
+                        center_of_gravity.x /= static_cast<double>(DIEs.size());
+                        center_of_gravity.y /= static_cast<double>(DIEs.size());
+                        rela_s.dice_pads_index = dice_pads_index;
+                        rela_s.pad_car = center_of_gravity;
+                    }
+                    netlist.push_back(rela_s);
+                }
+                isNet = false;
             }
-            str.clear();
         }
-	}
+    }
 
     // Cartesian convert to Polar
     double x = 0.0, y = 0.0;
@@ -337,6 +426,15 @@ void Chip::parse_Netlist(std::ifstream& fin)
         }
         //std::cout << "\ttheta = " << pol_position[i].angle << std::endl;
     }
+
+    std::vector<Cartesian> balls_car;
+    balls_car.clear();
+    for (size_t i = 0; i < netlist.size(); i++)
+        balls_car.push_back(netlist[i].ball_car);
+    Cartesian ball_CG = CG(balls_car);
+    //std::cout << "Center of gravity of balls: (" << ball_CG.x << ", " << ball_CG.y << ")\n";
+    //dice[0].set_Center(ball_CG);
+    dice[0].set_Center(Cartesian(-570.00, -2920.00));
 
     fin.close();
     std::cout << "parse netlist done\n";
@@ -377,8 +475,8 @@ void Chip::dice_Content()
             std::cout << std::fixed << std::setprecision(3) << std::setw(4) << i + 1 << " " << std::setw(8) << name[i]
                             << " x: " << std::setw(10) << cart_position[i].x 
                             << ", y: " << std::setw(10)<< cart_position[i].y
-                            << " | r: " << std::setw(10)<< polar_position[i].radius 
-                            << ", theta: "<< std::setw(10) << polar_position[i].angle * 180 / M_PI << std::endl;
+                            << " | r: " << std::setw(9)<< polar_position[i].radius 
+                            << ", theta: "<< std::setw(7) << polar_position[i].angle * 180 / M_PI << std::endl;
         }
     }
     std::cout << "----------Die content----------\n";
@@ -464,7 +562,7 @@ size_t Chip::get_Netlist_Index(std::string str) const
 
 void Chip::output_LP_File(std::ofstream& fout)
 {
-    /*// Minimize
+    // Minimize
     if (min_output)
     {
         fout << "Minimize\n";
@@ -517,22 +615,22 @@ void Chip::output_LP_File(std::ofstream& fout)
         fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << netlist[i].pad_pol.angle << " )\n" 
                  << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
                  << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
-                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( netlist[i].ball_car.x + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x ) << " n" << i << "s )\n"
-                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( netlist[i].ball_car.y + dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y ) << " n" << i << "c )\n";
+                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( netlist[i].ball_car.x - dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x ) << " n" << i << "s )\n"
+                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( netlist[i].ball_car.y - dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y ) << " n" << i << "c )\n";
         if (min_output)
         {
             fout << " \\minimize equation\n";
             fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << netlist[i].pad_pol.radius 
-                 << " n" << i << "c + " << netlist[i].ball_car.x << " )\n"
+                 << " n" << i << "c + " << netlist[i].ball_car.x - dice[netlist[i].dice_pads_index[0].first - 1].get_Center().x << " )\n"
                  << "  miner" << i << "y: m" << i << "y = POLY ( -" << netlist[i].pad_pol.radius
-                 << " n" << i << "s + " << netlist[i].ball_car.y << " )\n";
+                 << " n" << i << "s + " << netlist[i].ball_car.y - dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y << " )\n";
             fout << " \\absolute value\n"
                      << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
                      << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
         }
-    }*/
+    }
 
-    // Minimize
+    /*// Minimize
     if (min_output)
     {
         fout << "Minimize\n";
@@ -581,7 +679,7 @@ void Chip::output_LP_File(std::ofstream& fout)
                  << netlist[i].ball_car.y - dice[netlist[i].dice_pads_index[0].first - 1].get_Center().y << " )\n"
                  << "  abs" << i << "x: a" << i << "x = ABS ( n" << i << "x )\n"
                  << "  abs" << i << "x: a" << i << "y = ABS ( n" << i << "y )\n";
-    }
+    }*/
 
     // End
     fout << "End";

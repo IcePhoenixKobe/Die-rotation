@@ -14,7 +14,7 @@ Ball::Ball(std::size_t ball_num)
     position.clear();
     name.resize(amount);
     position.resize(amount);
-    for (int i = 0; i < static_cast<int>(position.size()); i++){
+    for (int i = 0; i < static_cast<int>(position.size()); i++) {
         name[i] = "unknown";
         position[i].x = 0.0;
         position[i].y = 0.0;

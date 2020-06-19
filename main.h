@@ -49,6 +49,7 @@ typedef struct Polar
     Polar(double ra, double an) : radius(ra), angle(an) {}
 } Polar;
 
+// Relationship
 typedef struct Relationship {
 	std::string relation_name;
     std::vector<std::pair<size_t, size_t>> dice_pads_index;
