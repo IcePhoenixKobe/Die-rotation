@@ -10,7 +10,8 @@ class Chip
 private:
     Ball balls;
     std::vector<Die> dice;
-    std::vector<Relationship> netlist;
+    std::vector<OuterRelationship> outer_netlist;
+    std::vector<InnerRelationship> inner_netlist;
 
     void parse_PIN(std::ifstream&);
     void parse_Netlist(std::ifstream&);

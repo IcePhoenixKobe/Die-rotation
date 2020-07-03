@@ -13,12 +13,7 @@
 #include<vector>
 #include<cmath>
 
-#include"gtk_cairo.h"
-
-// for parser.cpp
-// #include <stdlib.h>
-// #include <map>
-// #include <set>
+//#include"gtk_cairo.h"
 
 // whether output minimize in LP file
 extern bool min_output;
@@ -49,32 +44,63 @@ typedef struct Polar
     Polar(double ra, double an) : radius(ra), angle(an) {}
 } Polar;
 
-// Relationship
-typedef struct Relationship {
+// Relationship of outer connection
+typedef struct Outer_Relationship {
 	std::string relation_name;
     std::vector<std::pair<size_t, size_t>> dice_pads_index;
     std::vector<size_t> balls_index;
     Cartesian pad_car;
     Cartesian ball_car;
     Polar pad_pol;
-    Relationship() : relation_name("unknown")
+    Outer_Relationship() : relation_name("unknown")
     {
         dice_pads_index.clear();
         balls_index.clear();
         pad_car = Cartesian(0.0, 0.0);
         ball_car = Cartesian(0.0, 0.0);
         pad_pol = Polar(0.0, 0.0);
-    }
-    Relationship(std::string name, std::vector<std::pair<size_t, size_t>> par_dice_pads_index, std::vector<size_t> par_balls_index, Cartesian par_pad, Cartesian par_ball) : relation_name(name)
+    }/*
+    Outer_Relationship(std::string name, std::vector<std::pair<size_t, size_t>> par_dice_pads_index, std::vector<size_t> par_balls_index, Cartesian par_pad, Cartesian par_ball) : relation_name(name)
     {
         dice_pads_index = par_dice_pads_index;
         balls_index = par_balls_index;
         pad_car = par_pad;
         ball_car = par_ball;
-    }
-}Relationship;
+    }*/
+}OuterRelationship;
+
+// Relationship of inner connection
+typedef struct Inner_Relationship {
+	std::string relation_name;
+    std::pair<size_t, std::vector<size_t>> dice_pads1_index;
+    std::pair<size_t, std::vector<size_t>> dice_pads2_index;
+    Cartesian pad1_car;
+    Cartesian pad2_car;
+    Polar pad1_pol;
+    Polar pad2_pol;
+    Inner_Relationship() : relation_name("unknown")
+    {
+        dice_pads1_index.first = 0;
+        dice_pads2_index.first = 0;
+        dice_pads1_index.second.clear();
+        dice_pads2_index.second.clear();
+        pad1_car = Cartesian(0.0, 0.0);
+        pad2_car = Cartesian(0.0, 0.0);
+        pad1_pol = Polar(0.0, 0.0);
+        pad2_pol = Polar(0.0, 0.0);
+    }/*
+    Inner_Relationship(std::string name, std::pair<size_t, std::vector<size_t>> par_pads1_index, std::pair<size_t, std::vector<size_t>> par_pads2_index, Cartesian par_pad1, Cartesian par_pad2) : relation_name(name)
+    {
+        dice_pads1_index = par_pads1_index;
+        dice_pads2_index = par_pads2_index;
+        pad1_car = par_pad1;
+        pad2_car = par_pad2;
+    }*/
+}InnerRelationship;
 
 void check_argument(int, char*[]);
 Cartesian CG(std::vector<Cartesian>);
+
+bool ignore_Power_Ground(std::string);
 
 #endif  // MAIN_H

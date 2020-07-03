@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     if (GUI)
     {
         std::cout << "no graph haha!\n";
-        auto app = Application::create(argc, argv, "org.gtkmm.example");
+        //auto app = Application::create(argc, argv, "org.gtkmm.example");
     }
 
     return 0;
@@ -71,7 +71,7 @@ void check_argument(int argc, char* argv[])
 {
     for (int i = 3; i < argc; i++)
     {
-        if (strcmp(argv[i], "-mi") == 0)
+        if (strcmp(argv[i], "-m") == 0)
             min_output = false;
         if (strcmp(argv[i], "-PG") == 0)
             ignore_P_G = true;
@@ -96,4 +96,21 @@ Cartesian CG(std::vector<Cartesian> pos)
     cg.x /= static_cast<double>(pos.size());
     cg.y /= static_cast<double>(pos.size());
     return cg;
+}
+
+bool ignore_Power_Ground(std::string str)
+{
+    if (ignore_P_G && ( str.find("P") != std::string::npos || 
+						str.find("V") != std::string::npos || 
+						str.find("VCC") != std::string::npos || 
+						str.find("VDD") != std::string::npos || 
+						str.find("G") != std::string::npos || 
+						str.find("VSS") != std::string::npos
+					  ))
+	{
+		std::cout << "ignore " << str <<std::endl;
+		return true;
+	}
+    else
+		return false;
 }
