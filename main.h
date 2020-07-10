@@ -12,19 +12,8 @@
 #include<string.h>
 #include<vector>
 #include<cmath>
-
-//#include"gtk_cairo.h"
-
-// whether output minimize in LP file
-extern bool min_output;
-// whether ignore the power(P/V/VCC/VDD) and ground(G/VSS) in netlist file
-extern bool ignore_P_G;
-// The index of argument that point next one argument is .lp file name
-extern int LP_out;
-// The index of argument that point next one argument is .M file name
-extern int M_out;
-// GUI
-extern bool GUI;
+#include<map>
+#include<set>
 
 // Cartesian coordinate system
 typedef struct Cartesian
@@ -33,7 +22,7 @@ typedef struct Cartesian
     double y;
     Cartesian() : x(0.0), y(0.0) {}
     Cartesian(double par_x, double par_y) : x(par_x), y(par_y) {}
-} Cartesian;
+}Cartesian;
 
 // Polar coordinate system
 typedef struct Polar
@@ -42,7 +31,7 @@ typedef struct Polar
     double angle;
     Polar() : radius(0.0), angle(0.0) {}
     Polar(double ra, double an) : radius(ra), angle(an) {}
-} Polar;
+}Polar;
 
 // Relationship of outer connection
 typedef struct Outer_Relationship {
@@ -97,6 +86,22 @@ typedef struct Inner_Relationship {
         pad2_car = par_pad2;
     }*/
 }InnerRelationship;
+
+// whether output minimize in LP file
+extern bool min_output;
+// whether ignore the power(P/V/VCC/VDD) and ground(G/VSS) in netlist file
+extern bool ignore_P_G;
+// The index of argument that point next one argument is .lp file name
+extern int LP_out;
+// The index of argument that point next one argument is .M file name
+extern int M_out;
+// GUI
+extern int GUI;
+// For kernel.cc
+extern Cartesian GOD_Center;
+extern double GOD_Rotation;
+extern Cartesian GOD_GOD_Center;
+extern double GOD_GOD_Rotation;
 
 void check_argument(int, char*[]);
 Cartesian CG(std::vector<Cartesian>);

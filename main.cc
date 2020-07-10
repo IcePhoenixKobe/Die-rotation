@@ -1,11 +1,19 @@
 #include"main.h"
-#include"chip.h"
+#include"kernel.h"
+#include"windowApp.h"
 
 int LP_out = -1;
 int M_out = -1;
-bool GUI = false;
+int GUI = false;
 bool min_output = true;
 bool ignore_P_G = false;
+
+Cartesian GOD_Center(0.0, 0.0);
+double GOD_Rotation = 0.0;
+Cartesian GOD_GOD_Center(0.0, 0.0);
+double GOD_GOD_Rotation = 0.0;
+
+void dataTransfer(Chip&);
 
 int main(int argc, char* argv[])
 {
@@ -60,8 +68,20 @@ int main(int argc, char* argv[])
 
     if (GUI)
     {
-        std::cout << "no graph haha!\n";
-        //auto app = Application::create(argc, argv, "org.gtkmm.example");
+        if (GUI + 3 < argc) {
+            GOD_Center.x = stod(argv[GUI + 1]);
+            GOD_Center.y = stod(argv[GUI + 2]);
+            GOD_Rotation = stod(argv[GUI + 3]);
+            if (GUI + 6 < argc) {
+                GOD_GOD_Center.x = stod(argv[GUI + 4]);
+                GOD_GOD_Center.y = stod(argv[GUI + 5]);
+                GOD_GOD_Rotation = stod(argv[GUI + 6]);
+            }
+        }
+
+        WindowApp app;
+        dataTransfer(chip);
+        app.Run(argc, argv);
     }
 
     return 0;
@@ -80,7 +100,7 @@ void check_argument(int argc, char* argv[])
         if (strcmp(argv[i], "-M") == 0)
             M_out = i;
         if (strcmp(argv[i], "-G") == 0)
-            GUI = true;
+            GUI = i;
     }
     return;
 }

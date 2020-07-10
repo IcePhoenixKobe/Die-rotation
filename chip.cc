@@ -198,7 +198,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         balls_index.clear();
                         for (size_t i = 0; i < BGAs.size(); i++)
                         {
-                            size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
+                            size_t index_temp = balls.get_Index(BGAs[i]);   // set ball_index
                             if (index_temp == -1UL)
                             {
                                 std::cout << "error: Not found " << BGAs[i] << std::endl;
@@ -232,8 +232,8 @@ void Chip::parse_Netlist(std::ifstream& fin)
                             }
                             else
                             {
-                                center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
-                                center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
+                                center_of_gravity.x += dice[index_temp.first - 1].get_Pads_Cart_Position().at(index_temp.second).x;
+                                center_of_gravity.y += dice[index_temp.first - 1].get_Pads_Cart_Position().at(index_temp.second).y;
                                 dice_pads_index.push_back(index_temp);
                             }
                             center_of_gravity.x /= static_cast<double>(DIEs.size());
@@ -275,6 +275,9 @@ void Chip::parse_Netlist(std::ifstream& fin)
         netlist_name.clear();
         BGAs.clear();
         DIEs.clear();
+
+        dice[0].set_Center(Cartesian(-570.00, -2920.00));
+        dice[1].set_Center(Cartesian(-1103.04, 4833.50));
 
         while (getline(fin, str))
         {
@@ -344,7 +347,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                     balls_index.clear();
                     for (size_t i = 0; i < BGAs.size(); i++)
                     {
-                        size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
+                        size_t index_temp = balls.get_Index(BGAs[i]);   // set ball_index
                         if (index_temp == -1UL)
                         {
                             std::cout << "error: Not found " << BGAs[i] << std::endl;
@@ -371,6 +374,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         std::pair<size_t, size_t> index_temp(-1UL, -1UL);
                         std::stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
                         string_cache >> index_temp.first;           // set die_index
+                        std::cout << netlist_name << " : index_temp.first = " << index_temp.first << std::endl;
                         index_temp.second = dice[index_temp.first - 1].get_Pad_Index(DIEs[i]);   // set pad_index
                         if (index_temp.second == -1UL)
                         {
@@ -379,8 +383,8 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         }
                         else
                         {
-                            center_of_gravity.x += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).x;
-                            center_of_gravity.y += dice[index_temp.first - 1].get_Cart_Position().at(index_temp.second).y;
+                            center_of_gravity.x += dice[index_temp.first - 1].get_Pads_Cart_Position().at(index_temp.second).x;
+                            center_of_gravity.y += dice[index_temp.first - 1].get_Pads_Cart_Position().at(index_temp.second).y;
                             dice_pads_index.push_back(index_temp);
                         }
                     }
@@ -392,7 +396,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                     // insert relationship into outer netlist
                     outer_netlist.push_back(rela_s_O);
                 }
-                else if (DIEs.size() >= 2)  // die pads to die pads
+                /*else if (DIEs.size() >= 2)  // die pads to die pads
                 {
                     //std::cout << "kind of dice number: " << die_number.size() << std::endl;
                     if (die_number.size() == 2) // Can not handle three or more dice's relationships
@@ -415,15 +419,15 @@ void Chip::parse_Netlist(std::ifstream& fin)
                             if (pads1.first == 0 || pads1.first == die_index)
                             {
                                 pads1.first = die_index;
-                                cg1.x += dice[die_index - 1].get_Cart_Position().at(pad_index).x;
-                                cg1.y += dice[die_index - 1].get_Cart_Position().at(pad_index).y;
+                                cg1.x += dice[die_index - 1].get_Pads_Cart_Position().at(pad_index).x;
+                                cg1.y += dice[die_index - 1].get_Pads_Cart_Position().at(pad_index).y;
                                 pads1_index.push_back(pad_index);
                             }
                             else if (pads2.first == 0 || pads2.first == die_index)
                             {
                                 pads2.first = die_index;
-                                cg2.x += dice[die_index - 1].get_Cart_Position().at(pad_index).x;
-                                cg2.y += dice[die_index - 1].get_Cart_Position().at(pad_index).y;
+                                cg2.x += dice[die_index - 1].get_Pads_Cart_Position().at(pad_index).x;
+                                cg2.y += dice[die_index - 1].get_Pads_Cart_Position().at(pad_index).y;
                                 pads2_index.push_back(pad_index);
                             }
                             else
@@ -446,7 +450,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         // insert relationship into netlist
                         inner_netlist.push_back(rela_s_I);
                     }
-                }
+                }*/
                 isNet = false;
             }
         }
@@ -482,7 +486,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
     }
 
     // Cartesian convert to Polar (Inner Relationship)
-    double x1 = 0.0, y1 = 0.0, x2 = 0.0, y2 = 0.0;
+    /*double x1 = 0.0, y1 = 0.0, x2 = 0.0, y2 = 0.0;
     for (size_t i = 0; i < inner_netlist.size(); i++)
     {
         x1 = inner_netlist[i].pad1_car.x;
@@ -525,7 +529,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
         else if (x2 >= 0 && y2 < 0){  //Quadrant IV
             inner_netlist[i].pad2_pol.angle = (2 * M_PI + asin(y2));
         }
-    }
+    }*/
 
     /*std::vector<Cartesian> balls_car;
     balls_car.clear();
@@ -561,11 +565,11 @@ void Chip::dice_Content()
          << "\ncenter: " << dice[index].get_Center().x << " " << dice[index].get_Center().y
          << "\npad amount: " << dice[index].get_Pad_Amount() << std::endl;
         std::vector<std::string> name;
-        name = dice[index].get_Pad_Name();
+        name = dice[index].get_Pads_Name();
         std::vector<Cartesian> cart_position;
-        cart_position = dice[index].get_Cart_Position();
+        cart_position = dice[index].get_Pads_Cart_Position();
         std::vector<Polar> polar_position;
-        polar_position = dice[index].get_Pol_Position();
+        polar_position = dice[index].get_Pads_Pol_Position();
         assert(cart_position.size() == polar_position.size());
         for (size_t i = 0; i < cart_position.size() && i < polar_position.size(); i++) {
             std::cout << std::fixed << std::setprecision(3) << std::setw(4) << i + 1 << " " << std::setw(8) << name[i]
@@ -588,7 +592,7 @@ void Chip::netlist_Content()
     {
         std::cout << std::setw(4) << i + 1 << " " << std::setw(10) << outer_netlist[i].relation_name << ": ";
         for (size_t j = 0; j < outer_netlist[i].balls_index.size(); j++)
-            std::cout << "\n\t" << balls.get_Ball_Name(outer_netlist[i].balls_index[j]);
+            std::cout << "\n\t" << balls.get_Name(outer_netlist[i].balls_index[j]);
         std::cout << "\n\t-->\n";
         for (size_t j = 0; j < outer_netlist[i].dice_pads_index.size(); j++)
             std::cout << "\t" << dice[outer_netlist[i].dice_pads_index[j].first - 1].get_Pad_Name(outer_netlist[i].dice_pads_index[j].second) << std::endl;
@@ -699,7 +703,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     std::vector<std::vector<Polar>> dice_pads;
     dice_pads.resize(dice.size());
     for (size_t i = 0; i < dice.size() && i < dice_pads.size(); i++)
-        dice_pads[i] = dice[i].get_Pol_Position();
+        dice_pads[i] = dice[i].get_Pads_Pol_Position();
     fout << "Bounds\n";
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
     for (size_t i = 0; i < outer_netlist.size(); i++) {
@@ -759,7 +763,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     std::vector<std::vector<Polar>> dice_pads;
     dice_pads.resize(dice.size());
     for (size_t i = 0; i < dice.size() && i < dice_pads.size(); i++)
-        dice_pads[i] = dice[i].get_Pol_Position();
+        dice_pads[i] = dice[i].get_Pads_Pol_Position();
     fout << "Bounds\n";
     for (size_t i = 0; i < outer_netlist.size(); i++) {
         fout << " \\net" << i << "\n"
@@ -815,9 +819,10 @@ void Chip::output_M_File(std::ofstream& fout, char* file_name)
     {
         fout << " + (x(" << inner_netlist[i].dice_pads1_index.first << ")+" << inner_netlist[i].pad1_pol.radius << "*cos(" << inner_netlist[i].pad1_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads1_index.first << "))-x("
                  << inner_netlist[i].dice_pads2_index.first << ")-" << inner_netlist[i].pad2_pol.radius << "*cos(" << inner_netlist[i].pad2_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads2_index.first << "))).^2 + (x("
-                 << dice.size() + inner_netlist[i].dice_pads1_index.first << ")+" << inner_netlist[i].pad1_pol.radius << "*cos(" << inner_netlist[i].pad1_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads1_index.first << "))-x("
-                 << dice.size() + inner_netlist[i].dice_pads2_index.first << ")-" << inner_netlist[i].pad2_pol.radius << "*cos(" << inner_netlist[i].pad2_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads2_index.first << "))).^2";
+                 << dice.size() + inner_netlist[i].dice_pads1_index.first << ")+" << inner_netlist[i].pad1_pol.radius << "*sin(" << inner_netlist[i].pad1_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads1_index.first << "))-x("
+                 << dice.size() + inner_netlist[i].dice_pads2_index.first << ")-" << inner_netlist[i].pad2_pol.radius << "*sin(" << inner_netlist[i].pad2_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads2_index.first << "))).^2";
     }
     fout << ";";
     return;
 }
+

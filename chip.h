@@ -1,7 +1,6 @@
 #ifndef CHIP_H
 #define CHIP_H
 
-#include"main.h"
 #include"ball.h"
 #include"die.h"
 
@@ -10,8 +9,8 @@ class Chip
 private:
     Ball balls;
     std::vector<Die> dice;
-    std::vector<OuterRelationship> outer_netlist;
     std::vector<InnerRelationship> inner_netlist;
+    std::vector<OuterRelationship> outer_netlist;
 
     void parse_PIN(std::ifstream&);
     void parse_Netlist(std::ifstream&);
@@ -33,17 +32,24 @@ public:
     /*====================*/
 
     // get ball's information
-    int get_Ball_Amount() const { return balls.get_Amount(); }
-    std::vector<Cartesian> get_Ball_Pos() const { return balls.get_All_Pos(); }
+    size_t get_Ball_Amount() const { return balls.get_Amount(); }
+    std::vector<std::string> get_Balls_Name() const { return balls.get_All_Name(); }
+    std::string get_Ball_Name(size_t index) const { return balls.get_Name(index); }
+    std::vector<Cartesian> get_Balls_Pos() const { return balls.get_All_Pos(); }
+    Cartesian get_Ball_Pos(size_t index) const { return balls.get_Position(index); }
 
     // get dice's information
     int get_Die_Pad_Amount(int i) const { return dice[i].get_Pad_Amount(); }
     Cartesian get_Die_Center(int i) const { return dice[i].get_Center(); }
-    std::vector<Cartesian> get_Die_Cart_Pos(int i) const { return dice[i].get_Cart_Position(); }
-    std::vector<Polar> get_Die_Pol_Pos(int i) const { return dice[i].get_Pol_Position(); }
+    std::vector<Cartesian> get_Die_Cart_Pos(int i) const { return dice[i].get_Pads_Cart_Position(); }
+    std::vector<Polar> get_Die_Pol_Pos(int i) const { return dice[i].get_Pads_Pol_Position(); }
+    std::vector<Die> get_Dice() const { return dice; }
+    Die get_Die(size_t index) const { return dice[index]; }
 
     // get netlist information
     size_t get_Netlist_Index(std::string) const;
+    std::vector<InnerRelationship> get_All_I_Netlist() const { return inner_netlist; }
+    std::vector<OuterRelationship> get_All_O_Netlist() const { return outer_netlist; }
 
     // set the data of ball
     void set_Ball_Amount(int num) {balls.set_Amount(num); }
