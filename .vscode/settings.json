@@ -54,6 +54,15 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "valarray": "cpp"
-    }
+        "valarray": "cpp",
+        "bitset": "cpp",
+        "csignal": "cpp",
+        "cstring": "cpp",
+        "strstream": "cpp",
+        "complex": "cpp",
+        "set": "cpp",
+        "cfenv": "cpp",
+        "typeindex": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
 }
