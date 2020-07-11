@@ -210,7 +210,7 @@ static gboolean onDrawEvent(GtkWidget *widget, cairo_t *cr2, gpointer user_data)
           //  map_it->second.Draw(cr);
     }
 
-    for(int i = 0; i < fingerToBallVec.size(); ++i){
+    for(size_t i = 0; i < fingerToBallVec.size(); ++i){
         fingerToBallVec[i].Draw(cr);
     }
 

@@ -1,6 +1,6 @@
 #include"main.h"
-#include"kernel.h"
-#include"windowApp.h"
+
+Chip *chip = nullptr;
 
 int LP_out = -1;
 int M_out = -1;
@@ -13,18 +13,16 @@ double GOD_Rotation = 0.0;
 Cartesian GOD_GOD_Center(0.0, 0.0);
 double GOD_GOD_Rotation = 0.0;
 
-void dataTransfer(Chip&);
-
 int main(int argc, char* argv[])
 {
-    Chip chip;
+    chip = new Chip;
 
     std::ifstream pad2ball_fin;
     pad2ball_fin.clear();
 
     check_argument(argc, argv);
 
-    if (chip.parser(argc, argv) == -1) {
+    if (chip->parser(argc, argv) == -1) {
         std::cout << "Program terminated because file open error!\n";
         return 0;
     }
@@ -39,7 +37,7 @@ int main(int argc, char* argv[])
 
         LP_file.open(argv[LP_out + 1]);
         if (LP_file.is_open()) {
-            chip.output_LP_File(LP_file);
+            chip->output_LP_File(LP_file);
         }
         else {
             std::cout << "open file \"" << argv[LP_out + 1] << "\" error.\n";
@@ -56,7 +54,7 @@ int main(int argc, char* argv[])
 
         M_file.open(argv[M_out + 1]);
         if (M_file.is_open()) {
-            chip.output_M_File(M_file, argv[M_out + 1]);
+            chip->output_M_File(M_file, argv[M_out + 1]);
         }
         else {
             std::cout << "open file \"" << argv[M_out + 1] << "\" error.\n";
@@ -80,57 +78,9 @@ int main(int argc, char* argv[])
         }
 
         WindowApp app;
-        dataTransfer(chip);
+        dataTransfer();
         app.Run(argc, argv);
     }
 
     return 0;
-}
-
-void check_argument(int argc, char* argv[])
-{
-    for (int i = 3; i < argc; i++)
-    {
-        if (strcmp(argv[i], "-m") == 0)
-            min_output = false;
-        if (strcmp(argv[i], "-PG") == 0)
-            ignore_P_G = true;
-        if (strcmp(argv[i], "-LP") == 0)
-            LP_out = i;
-        if (strcmp(argv[i], "-M") == 0)
-            M_out = i;
-        if (strcmp(argv[i], "-G") == 0)
-            GUI = i;
-    }
-    return;
-}
-
-Cartesian CG(std::vector<Cartesian> pos)
-{
-    Cartesian cg;
-    for (size_t i = 0; i < pos.size(); i++)
-    {
-        cg.x += pos[i].x;
-        cg.y += pos[i].y;
-    }
-    cg.x /= static_cast<double>(pos.size());
-    cg.y /= static_cast<double>(pos.size());
-    return cg;
-}
-
-bool ignore_Power_Ground(std::string str)
-{
-    if (ignore_P_G && ( str.find("P") != std::string::npos || 
-						str.find("V") != std::string::npos || 
-						str.find("VCC") != std::string::npos || 
-						str.find("VDD") != std::string::npos || 
-						str.find("G") != std::string::npos || 
-						str.find("VSS") != std::string::npos
-					  ))
-	{
-		std::cout << "ignore " << str <<std::endl;
-		return true;
-	}
-    else
-		return false;
 }

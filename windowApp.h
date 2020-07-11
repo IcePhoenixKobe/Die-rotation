@@ -1,9 +1,10 @@
 #ifndef WINDOWAPP_H
 #define WINDOWAPP_H
 
-#include<gtkmm.h>
+#include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 
-#include"main.h"
+#include"kernel.h"
 #include"gtk_cairo.h"
 
 class WindowApp

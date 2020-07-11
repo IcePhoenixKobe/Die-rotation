@@ -1,5 +1,8 @@
 #include"ball.h"
 
+using namespace std;
+
+/* Default Constructor */
 Ball::Ball()
 {
     amount = 0;
@@ -7,21 +10,23 @@ Ball::Ball()
     position.clear();
 }
 
-Ball::Ball(std::size_t ball_num)
+/* Constructor */
+Ball::Ball(size_t ball_num)
 {
     amount = ball_num;
     name.clear();
     position.clear();
     name.resize(amount);
     position.resize(amount);
-    for (int i = 0; i < static_cast<int>(position.size()); i++) {
+    for (size_t i = 0; i < position.size(); i++) {
         name[i] = "unknown";
         position[i].x = 0.0;
         position[i].y = 0.0;
     }
 }
 
-size_t Ball::get_Index(std::string str) const
+/* Use BGA ball name to get index of vector */
+size_t Ball::get_Ball_Index(string str) const
 {
     for (size_t t = 0; t < name.size(); t++)
         if (name[t] == str)

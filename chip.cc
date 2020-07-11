@@ -1,12 +1,15 @@
 #include"chip.h"
 
+/* Constructor */
 Chip::Chip()
 {
     balls = Ball();
     dice.clear();
+    inner_netlist.clear();
     outer_netlist.clear();
 }
 
+/* private function, parse all pin of chip */
 void Chip::parse_PIN(std::ifstream& fin)
 {
 	int sub_str_pos = -1;
@@ -132,6 +135,7 @@ void Chip::parse_PIN(std::ifstream& fin)
     return;
 }
 
+/* private funvtion, parse netlist of chip */
 void Chip::parse_Netlist(std::ifstream& fin)
 {
     std::string str, str_temp;
@@ -198,7 +202,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         balls_index.clear();
                         for (size_t i = 0; i < BGAs.size(); i++)
                         {
-                            size_t index_temp = balls.get_Index(BGAs[i]);   // set ball_index
+                            size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
                             if (index_temp == -1UL)
                             {
                                 std::cout << "error: Not found " << BGAs[i] << std::endl;
@@ -206,8 +210,8 @@ void Chip::parse_Netlist(std::ifstream& fin)
                             }
                             else
                             {
-                                center_of_gravity.x += balls.get_All_Pos().at(index_temp).x;
-                                center_of_gravity.y += balls.get_All_Pos().at(index_temp).y;
+                                center_of_gravity.x += balls.get_All_Position().at(index_temp).x;
+                                center_of_gravity.y += balls.get_All_Position().at(index_temp).y;
                                 balls_index.push_back(index_temp);
                             }
                         }
@@ -347,7 +351,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
                     balls_index.clear();
                     for (size_t i = 0; i < BGAs.size(); i++)
                     {
-                        size_t index_temp = balls.get_Index(BGAs[i]);   // set ball_index
+                        size_t index_temp = balls.get_Ball_Index(BGAs[i]);   // set ball_index
                         if (index_temp == -1UL)
                         {
                             std::cout << "error: Not found " << BGAs[i] << std::endl;
@@ -355,8 +359,8 @@ void Chip::parse_Netlist(std::ifstream& fin)
                         }
                         else
                         {
-                            center_of_gravity.x += balls.get_All_Pos().at(index_temp).x;
-                            center_of_gravity.y += balls.get_All_Pos().at(index_temp).y;
+                            center_of_gravity.x += balls.get_All_Position().at(index_temp).x;
+                            center_of_gravity.y += balls.get_All_Position().at(index_temp).y;
                             balls_index.push_back(index_temp);
                         }
                     }
@@ -541,6 +545,7 @@ void Chip::parse_Netlist(std::ifstream& fin)
     return;
 }
 
+/* Output data of BGA balls */
 void Chip::balls_Content()
 {
     std::cout << "\n----------Ball content----------\n"
@@ -548,7 +553,7 @@ void Chip::balls_Content()
     std::vector<std::string> name;
     name = balls.get_All_Name();
     std::vector<Cartesian> position;
-    position = balls.get_All_Pos();
+    position = balls.get_All_Position();
     for (size_t i = 0; i < position.size(); i++)
         std::cout << std::fixed << std::setprecision(3) << std::setw(4) << i + 1 << " " << std::setw(8) << name[i]
          << " x: " << std::setw(10) << position[i].x << ", y: " << std::setw(10) << position[i].y << std::endl;
@@ -556,6 +561,7 @@ void Chip::balls_Content()
     return;
 }
 
+/* Output data of dice */
 void Chip::dice_Content()
 {
     std::cout << "\n----------Die content----------";
@@ -583,6 +589,7 @@ void Chip::dice_Content()
     return;
 }
 
+/* Output data of netlist */
 void Chip::netlist_Content()
 {
     std::cout << "\n----------Netlist content----------\n"
@@ -612,6 +619,7 @@ void Chip::netlist_Content()
     return;
 }
 
+/* Parse PIN, netlist(, and shuffle_netlist) file */
 int Chip::parser(int argc, char** argv)
 {
     std::string str;
@@ -664,6 +672,7 @@ int Chip::parser(int argc, char** argv)
     return 0;
 }
 
+// Will be rewrite
 size_t Chip::get_Netlist_Index(std::string str) const
 {
     for (size_t t = 0; t <= outer_netlist.size(); t++)
@@ -672,6 +681,7 @@ size_t Chip::get_Netlist_Index(std::string str) const
     return -1UL;
 }
 
+/* Output .lp file for Gurobi */
 void Chip::output_LP_File(std::ofstream& fout)
 {
     std::cout << "Notice: can not use multi_io!!!\n";
@@ -720,7 +730,7 @@ void Chip::output_LP_File(std::ofstream& fout)
 
     // General Constraint
     std::vector<Cartesian> ball_pos;
-    ball_pos = balls.get_All_Pos();
+    ball_pos = balls.get_All_Position();
     fout << "General Constraint\n";
     for (size_t i = 0; i < outer_netlist.size(); i++) {
         fout << "\\net" << i << "\n";
@@ -778,7 +788,7 @@ void Chip::output_LP_File(std::ofstream& fout)
 
     // General Constraint
     std::vector<Cartesian> ball_pos;
-    ball_pos = balls.get_All_Pos();
+    ball_pos = balls.get_All_Position();
     fout << "General Constraint\n";
     for (size_t i = 0; i < outer_netlist.size(); i++) {
         fout << "\\net" << i << "\n";
@@ -799,6 +809,7 @@ void Chip::output_LP_File(std::ofstream& fout)
     return;
 }
 
+/* Output .m file for MATLAB */
 void Chip::output_M_File(std::ofstream& fout, char* file_name)
 {
     /* Get Filename */

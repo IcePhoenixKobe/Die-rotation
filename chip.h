@@ -1,6 +1,9 @@
 #ifndef CHIP_H
 #define CHIP_H
 
+// whether output minimize in LP file
+extern bool min_output;
+
 #include"ball.h"
 #include"die.h"
 
@@ -19,7 +22,6 @@ public:
     ~Chip() {}
 
     // chip information
-
     void balls_Content();
     void dice_Content();
     void netlist_Content();
@@ -28,14 +30,13 @@ public:
     // file parser
     // parse PIN, netlist(, and shuffle_netlist)
     int parser(int, char**);
-
     /*====================*/
 
     // get ball's information
     size_t get_Ball_Amount() const { return balls.get_Amount(); }
     std::vector<std::string> get_Balls_Name() const { return balls.get_All_Name(); }
     std::string get_Ball_Name(size_t index) const { return balls.get_Name(index); }
-    std::vector<Cartesian> get_Balls_Pos() const { return balls.get_All_Pos(); }
+    std::vector<Cartesian> get_Balls_Pos() const { return balls.get_All_Position(); }
     Cartesian get_Ball_Pos(size_t index) const { return balls.get_Position(index); }
 
     // get dice's information

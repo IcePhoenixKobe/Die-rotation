@@ -1,6 +1,7 @@
 #ifndef DIE_H
 #define DIE_H
-#include"main.h"
+
+#include"kernel.h"
 
 class Die
 {
@@ -12,15 +13,16 @@ private:
     std::vector<Polar> pol_position;
 
     void Clear_Pad();
-    void Resize_Pad(int);
+    void Resize_Pad(size_t);
 public:
-    Die();
+    Die() : pad_num(0), center(Cartesian(0.0, 0.0)) { Clear_Pad(); }    // default constructor
     Die(std::size_t);
     Die(std::size_t, double, double);
     ~Die() {}
 
     void convert_cart_to_polar();
 
+    // Get function
     size_t get_Pad_Amount() const { return pad_num; }
     Cartesian get_Center() const { return center; }
     std::vector<std::string> get_Pads_Name() const { return pad_name; }
@@ -31,6 +33,7 @@ public:
     Cartesian get_Cart_Position(size_t index) const { return cart_position[index]; }
     Polar get_Pol_Position(size_t index) const { return pol_position[index]; }
 
+    // Set function
     void set_Amount(int num) { pad_num = num; }
     void set_Center(Cartesian xy) { center = xy; }
     void set_Pad_Name(std::vector<std::string> die_pad_name) { pad_name = die_pad_name; }

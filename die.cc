@@ -1,14 +1,8 @@
 #include"die.h"
 
-/* Default constructor */
-Die::Die()
-{
-    pad_num = 0;
-    center.x = 0.0;
-    center.y = 0.0;
-    Clear_Pad();
-}
+using namespace std;
 
+/* Default Constructor */
 Die::Die(std::size_t die_pad_number)
 {
     pad_num = die_pad_number;
@@ -18,6 +12,7 @@ Die::Die(std::size_t die_pad_number)
     Resize_Pad(pad_num);
 }
 
+/* Constructor */
 Die::Die(std::size_t die_pad_number, double center_x, double center_y)
 {
     pad_num = die_pad_number;
@@ -35,24 +30,22 @@ void Die::Clear_Pad()
     pol_position.clear();
 }
 
-/*
-    resize the cart_position and pol_position, and set all element of 
-    cart_position and pol_position to 0.0.
-*/
-void Die::Resize_Pad(int size)
+/* Resize the cart_position and pol_position, and set all element of 
+ * cart_position and pol_position to 0.0.
+ * */
+void Die::Resize_Pad(size_t size)
 {
     pad_name.resize(size);
     cart_position.resize(size);
     pol_position.resize(size);
-    for (int i = 0; i < size; i++) {
-        pad_name[i] = "unknown";
-        cart_position[i].x = 0.0;
-        cart_position[i].y = 0.0;
-        pol_position[i].radius = 0.0;
-        pol_position[i].angle = 0.0;
+    for (size_t i = 0; i < size; i++) {
+        pad_name[i] = "unknownPad";
+        cart_position[i] = Cartesian(0.0, 0.0);
+        pol_position[i] = Polar(0.0, 0.0);
     }
 }
 
+/* Convert cartesian coordinate system to polar coordinate system */
 void Die::convert_cart_to_polar()
 {
     double x = 0.0, y = 0.0;
@@ -60,11 +53,9 @@ void Die::convert_cart_to_polar()
     for (size_t i = 0; i < cart_position.size() && i < pol_position.size(); i++)
     {
         //std::cout << "pad " << i + 1 << ":";
-        x = cart_position[i].x;
-        y = cart_position[i].y;
 
         // calculate radius
-        pol_position[i].radius = sqrt(x * x + y * y);
+        pol_position[i].radius = cart_position[i].distance();
         //std::cout << "\tradius = " << pol_position[i].radius;
 
         // calculate theta
@@ -86,6 +77,7 @@ void Die::convert_cart_to_polar()
     }
 }
 
+/* Use die pad name to get index of (pad_name) vector */
 size_t Die::get_Pad_Index(std::string str) const
 {
     for (size_t t = 0; t < pad_name.size(); t++)

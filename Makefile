@@ -7,10 +7,10 @@ all:die_rotation
 die_rotation: $(OBJS)
 	$(CC) $(OBJS) -o $@ $(CFLAGS)
 
-main.o: main.cc main.h kernel.h chip.h
+main.o: main.cc main.h windowApp.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-kernel.o: kernel.cc kernel.h
+kernel.o: kernel.cc kernel.h windowApp.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 windowApp.o: windowApp.cc windowApp.h

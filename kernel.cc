@@ -1,5 +1,4 @@
-#include"kernel.h"
-#include"windowApp.h"
+#include"main.h"
 
 using namespace std;
 
@@ -13,7 +12,57 @@ static const double ball_radius = 200.0;
 // extern variables from gtk_GUI.cpp file
 extern map<string, map<string, PhysicalObject>> g_entireObjMap;
 
-void dataTransfer(Chip &chip){
+void check_argument(int argc, char* argv[])
+{
+    for (int i = 3; i < argc; i++)
+    {
+        if (strcmp(argv[i], "-m") == 0)
+            min_output = false;
+        if (strcmp(argv[i], "-PG") == 0)
+            ignore_P_G = true;
+        if (strcmp(argv[i], "-LP") == 0)
+            LP_out = i;
+        if (strcmp(argv[i], "-M") == 0)
+            M_out = i;
+        if (strcmp(argv[i], "-G") == 0)
+            GUI = i;
+    }
+    return;
+}
+
+Cartesian CG(vector<Cartesian> pos)
+{
+    Cartesian cg(0.0, 0.0);
+    for (size_t i = 0; i < pos.size(); i++)
+    {
+        cg.x += pos[i].x;
+        cg.y += pos[i].y;
+    }
+    cg.x /= static_cast<double>(pos.size());
+    cg.y /= static_cast<double>(pos.size());
+    return cg;
+}
+
+bool ignore_Power_Ground(string str)
+{
+    if (ignore_P_G && (
+                        str.find("P") != string::npos || 
+						str.find("V") != string::npos || 
+						str.find("VCC") != string::npos || 
+						str.find("VDD") != string::npos || 
+						str.find("G") != string::npos || 
+						str.find("VSS") != string::npos
+                    )
+        )
+	{
+		cout << "ignore " << str << endl;
+		return true;
+	}
+    else
+		return false;
+}
+
+void dataTransfer(){
     /* first - read the info, netlist, pin and artificial finger file (name, position and relationship) */
     item temp_item;
     map<string, item> pads, balls;
@@ -28,10 +77,10 @@ void dataTransfer(Chip &chip){
     padArtificialFingerPair.clear();
 
     // 1. insert all pads
-    for (size_t t = 0; t < chip.get_Dice().size(); t++)
+    for (size_t t = 0; t < chip->get_Dice().size(); t++)
     {
         pads.clear();
-        Die die = chip.get_Die(t);
+        Die die = chip->get_Die(t);
         for (size_t tt = 0; tt < die.get_Pad_Amount(); tt++)
         {
             temp_item.name = die.get_Pad_Name(tt);
@@ -44,19 +93,19 @@ void dataTransfer(Chip &chip){
     }
 
     // 2. insert all BGA balls
-    for (size_t t = 0; t < chip.get_Ball_Amount(); t++)
+    for (size_t t = 0; t < chip->get_Ball_Amount(); t++)
     {
-        temp_item.name = chip.get_Ball_Name(t);
-        temp_item.x = chip.get_Ball_Pos(t).x;
-        temp_item.y = -chip.get_Ball_Pos(t).y;
+        temp_item.name = chip->get_Ball_Name(t);
+        temp_item.x = chip->get_Ball_Pos(t).x;
+        temp_item.y = -chip->get_Ball_Pos(t).y;
         balls[temp_item.name] = temp_item;
     }
 	items["ball"] = balls;
 
     // 3. insert all netlists
-    vector<Die> dice = chip.get_Dice();
-    vector<InnerRelationship> inner_nets = chip.get_All_I_Netlist();
-    vector<OuterRelationship> outer_nets = chip.get_All_O_Netlist();
+    vector<Die> dice = chip->get_Dice();
+    vector<InnerRelationship> inner_nets = chip->get_All_I_Netlist();
+    vector<OuterRelationship> outer_nets = chip->get_All_O_Netlist();
     for (size_t t = 0; t < inner_nets.size(); t++)
     {
         // NOPE!!!
@@ -67,7 +116,7 @@ void dataTransfer(Chip &chip){
             for (size_t ttt = 0; ttt < outer_nets[t].dice_pads_index.size(); ttt++)
                 padBallPair[
                     dice[outer_nets[t].dice_pads_index[ttt].first - 1].get_Pad_Name(outer_nets[t].dice_pads_index[ttt].second)
-                ] = chip.get_Ball_Name(outer_nets[t].balls_index[tt]);
+                ] = chip->get_Ball_Name(outer_nets[t].balls_index[tt]);
     }
 
     /*for (auto i = padBallPair.begin(); i != padBallPair.end(); i++)
@@ -82,7 +131,7 @@ void dataTransfer(Chip &chip){
     map<Group, PadGroup> padGroupMap;
     
     cout << "----------------\n";
-    initialize(chip, items, padBallPair, padArtificialFingerPair, padGroupMap);
+    initialize(items, padBallPair, padArtificialFingerPair, padGroupMap);
 
     /*int count = 0;
     for(map<Group, PadGroup>::iterator map_it = padGroupMap.begin(); map_it != padGroupMap.end(); ++map_it){
@@ -96,7 +145,7 @@ void dataTransfer(Chip &chip){
     }*/
 }
 
-void initialize(const Chip &chip, const map<string, map<string, item>> &items, 
+void initialize(const map<string, map<string, item>> &items, 
         const map<string, string> &padBallPair,
         const map<string, string> &padArtificialFingerPair,
         map<Group, PadGroup> &padGroupMap)

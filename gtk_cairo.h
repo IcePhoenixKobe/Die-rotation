@@ -1,7 +1,7 @@
 #ifndef GTK_CAIRO_H
 #define GTK_CAIRO_H
 
-#include"main.h"
+#include"kernel.h"
 #include<gtk/gtk.h>
 
 using namespace std;
