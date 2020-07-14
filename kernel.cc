@@ -2,34 +2,65 @@
 
 using namespace std;
 
-static const int space = 40;
 static const int pad_width = 40;
 static const int pad_height = 60;
-static const int finger_width = 80;
-static const int finger_height = 250;
-static const double ball_radius = 200.0;
 
 // extern variables from gtk_GUI.cpp file
 extern map<string, map<string, PhysicalObject>> g_entireObjMap;
 
+// set global parameter with input argument
 void check_argument(int argc, char* argv[])
 {
-    for (int i = 3; i < argc; i++)
-    {
-        if (strcmp(argv[i], "-m") == 0)
-            min_output = false;
-        if (strcmp(argv[i], "-PG") == 0)
-            ignore_P_G = true;
-        if (strcmp(argv[i], "-LP") == 0)
-            LP_out = i;
-        if (strcmp(argv[i], "-M") == 0)
-            M_out = i;
-        if (strcmp(argv[i], "-G") == 0)
-            GUI = i;
+    if (argc < 4) {
+        cout << "argument at least has drc, pin, and netlist file\n";
+        exit(-1);
+    }
+    else {
+        for (int i = 4; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-m") == 0)
+                min_output = false;
+            if (strcmp(argv[i], "-PG") == 0)
+                ignore_P_G = true;
+            if (strcmp(argv[i], "-LP") == 0)
+                LP_out = i;
+            if (strcmp(argv[i], "-M") == 0)
+                M_out = i;
+            if (strcmp(argv[i], "-G") == 0)
+                GUI = i;
+        }
     }
     return;
 }
 
+// convert cartesian coordinate system to polar coordinate system
+Polar convert_cart_to_polar(Cartesian position)
+{
+    Polar return_polar(0.0, 0.0);
+    double x = 0.0, y = 0.0;
+
+    // calculate radius
+    return_polar.radius = position.distance();
+
+    // calculate theta
+    x = position.x / return_polar.radius;
+    y = position.y / return_polar.radius;
+    if (x >= 0 && y >= 0){   //Quadrant I
+        return_polar.angle = (asin(y) + acos(x)) / 2;
+    }
+    else if (x < 0 && y >= 0){  //Quadrant II
+        return_polar.angle = acos(x);
+    }
+    else if (x < 0 && y < 0){  //Quadrant III
+        return_polar.angle = acos(x) - 2 * asin(y);
+    }
+    else if (x >= 0 && y < 0){  //Quadrant IV
+        return_polar.angle = (2 * M_PI + asin(y));
+    }
+    return return_polar;
+}
+
+// calculate center of gravity by cartesian coordinate system
 Cartesian CG(vector<Cartesian> pos)
 {
     Cartesian cg(0.0, 0.0);
@@ -46,11 +77,13 @@ Cartesian CG(vector<Cartesian> pos)
 bool ignore_Power_Ground(string str)
 {
     if (ignore_P_G && (
-                        str.find("P") != string::npos || 
-						str.find("V") != string::npos || 
+						str.find("GND") != string::npos || 
+                        str.find("NET_G") != string::npos || 
+                        str.find("NET_P") != string::npos || 
+                        str.find("NET_V") != string::npos || 
 						str.find("VCC") != string::npos || 
 						str.find("VDD") != string::npos || 
-						str.find("G") != string::npos || 
+						str.find("VPP") != string::npos || 
 						str.find("VSS") != string::npos
                     )
         )
@@ -63,277 +96,345 @@ bool ignore_Power_Ground(string str)
 }
 
 void dataTransfer(){
-    /* first - read the info, netlist, pin and artificial finger file (name, position and relationship) */
+    
+    map<string, map<string, item>> items;   // record object name and position
+    map<Group, PadGroup> padGroupMap;
+    items.clear();
+    padGroupMap.clear();
+    
+    cout << "----------------\n";
+    initialize(items, padGroupMap);
+}
+
+void initialize(map<string, map<string, item>> &items, 
+        map<Group, PadGroup> &padGroupMap)
+{
     item temp_item;
     map<string, item> pads, balls;
-    map<string, map<string, item>> items;            // record object name and position
-    map<string, string> padBallPair, padArtificialFingerPair; // object relationship
-	//vector<vector<float>> fingerRowPos;             // each Group's position of row of the fingers
-
+    
+    temp_item = item();
     pads.clear();
     balls.clear();
-    items.clear();
-    padBallPair.clear();
-    padArtificialFingerPair.clear();
+
+    // Draw Line
+    {
+        // Draw Inner Netlist Line
+        vector<InnerRelationship> inner_nets = chip->get_All_I_Netlist();
+        for (size_t i = 0; i < inner_nets.size(); i++) {
+            // draw single line
+            if (inner_nets[i].dice_pads1_index.second.size() == 1 && inner_nets[i].dice_pads2_index.second.size() == 1)
+            {
+                Point pad1_center(inner_nets[i].pad1_car.x, -(inner_nets[i].pad1_car.y));
+                Point pad2_center(inner_nets[i].pad2_car.x, -(inner_nets[i].pad2_car.y));
+                DrawContainer NetlistContainer(
+                        (pad1_center + pad2_center) / 2.0,      // the middle point between pad1_center and pad2_center
+                        fabs(pad1_center.x - pad2_center.x),    // the x distance between pad1_center and pad2_center
+                        fabs(pad1_center.y - pad2_center.y)     // the y distance between pad1_center and pad2_center
+                    );
+                DrawLine padToPadLine(
+                        pad1_center,              // start point is pad1_center
+                        pad2_center,             // end point is pad2_center
+                        Color(1.0, 0.0, 1.0)    // ???color
+                    );
+                
+                NetlistContainer.push_back(&padToPadLine);
+            
+                // constructor the 'PhysicalObject' to pad and store it
+                g_entireObjMap["InnerNetlistMap"][inner_nets[i].relation_name] = PhysicalObject(
+                        inner_nets[i].relation_name,        // the name of the netlist
+                        NetlistContainer.getCenterPoint(),  // the center of the 
+                        NetlistContainer                                    // correspond DrawContainer
+                        );
+            }
+            // draw multi line
+            else {
+                // the border position of the pads
+                double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
+                                maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
+                {
+                    for (size_t j = 0; j < inner_nets[i].dice_pads1_index.second.size(); j++) {
+                        // get the center point of the pad
+                        Point padCenter(
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y);
+                        // update maxX
+                        if(maxX < padCenter.x) maxX = padCenter.x;
+                        // update minX
+                        if(minX > padCenter.x) minX = padCenter.x;
+                        // update maxY
+                        if(maxY < padCenter.y) maxY = padCenter.y;
+                        // update minY
+                        if(minY > padCenter.y) minY = padCenter.y;
+                    }
+                    for (size_t j = 0; j < inner_nets[i].dice_pads2_index.second.size(); j++) {
+                        // get the center point of the pad
+                        Point padCenter(
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).x, 
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).y);
+                        // update maxX
+                        if(maxX < padCenter.x) maxX = padCenter.x;
+                        // update minX
+                        if(minX > padCenter.x) minX = padCenter.x;
+                        // update maxY
+                        if(maxY < padCenter.y) maxY = padCenter.y;
+                        // update minY
+                        if(minY > padCenter.y) minY = padCenter.y;
+                    }
+                }
+                
+                DrawContainer NetlistContainer(
+                        Point((maxX + minX) / 2.0, (maxY + minY) / 2.0),    // the middle point of pads
+                        fabs(maxX - minX),    // the x distance of pads
+                        fabs(maxY - minY)     // the y distance of pads
+                    );
+                if (inner_nets[i].dice_pads1_index.second.size() != 1)
+                {
+                    for (size_t j = 0; j < inner_nets[i].dice_pads1_index.second.size(); j++) {
+                        DrawLine padToCGLine(
+                            Point(    // start point is one of pad of pads1
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
+                            -(chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y)), 
+                            Point(inner_nets[i].pad1_car.x, -(inner_nets[i].pad1_car.y)),  // end point is pads1 CG
+                            Color(1.0, 0.2, 0.2)    // ???color
+                        );
+                        NetlistContainer.push_back(&padToCGLine);
+                    }
+                }
+                DrawLine CGToCGLine(
+                        Point(inner_nets[i].pad1_car.x, -(inner_nets[i].pad1_car.y)), // start point is pads1 CG
+                        Point(inner_nets[i].pad2_car.x, -(inner_nets[i].pad2_car.y)),  // end point is pads2 CG
+                        Color(1.0, 0.2, 0.2)    // ???color
+                    );
+                NetlistContainer.push_back(&CGToCGLine);
+                if (inner_nets[i].dice_pads2_index.second.size() != 1)
+                {
+                    for (size_t j = 0; j < inner_nets[i].dice_pads2_index.second.size(); j++) {
+                        DrawLine padToCGLine(
+                            Point(    // start point is one of pad of pads2
+                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).x, 
+                            -(chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).y)), 
+                            Point(inner_nets[i].pad2_car.x, -(inner_nets[i].pad2_car.y)),  // end point is pad1s CG
+                            Color(1.0, 0.2, 0.2)    // ???color
+                        );
+                        NetlistContainer.push_back(&padToCGLine);
+                    }
+                }
+
+                // constructor the 'PhysicalObject' to pad and store it
+                g_entireObjMap["InnerNetlistMap"][inner_nets[i].relation_name] = PhysicalObject(
+                        inner_nets[i].relation_name,        // the name of the netlist
+                        NetlistContainer.getCenterPoint(),  // the center of the 
+                        NetlistContainer                                    // correspond DrawContainer
+                        );
+            }
+        }
+        // Draw Outer Netlist Line
+        vector<OuterRelationship> outer_nets = chip->get_All_O_Netlist();
+        for (size_t i = 0; i < outer_nets.size(); i++) {
+            // get amount of pads
+            size_t pads_amount = 0;
+            for (size_t j = 0; j < outer_nets[i].dice_pads_index.size(); j++)
+                pads_amount += outer_nets[i].dice_pads_index[j].size();
+            
+            // draw single line
+            if (outer_nets[i].balls_index.size() == 1 && pads_amount == 1)
+            {
+                Point ball_center(outer_nets[i].ball_car.x, -(outer_nets[i].ball_car.y));
+                Point pad_center(outer_nets[i].pad_car.x, -(outer_nets[i].pad_car.y));
+                DrawContainer NetlistContainer(
+                        (ball_center + pad_center) / 2.0,      // the middle point between pad1_center and pad2_center
+                        fabs(ball_center.x - pad_center.x),    // the x distance between pad1_center and pad2_center
+                        fabs(ball_center.y - pad_center.y)     // the y distance between pad1_center and pad2_center
+                    );
+                DrawLine padToPadLine(
+                        ball_center,              // start point is pad1_center
+                        pad_center,             // end point is pad2_center
+                        Color(0.0, 1.0, 1.0)    // ???color
+                    );
+                
+                NetlistContainer.push_back(&padToPadLine);
+            
+                // constructor the 'PhysicalObject' to pad and store it
+                g_entireObjMap["OuterNetlistMap"][outer_nets[i].relation_name] = PhysicalObject(
+                        outer_nets[i].relation_name,        // the name of the netlist
+                        NetlistContainer.getCenterPoint(),  // the center of the 
+                        NetlistContainer                                    // correspond DrawContainer
+                        );
+            }
+            // draw multi line
+            else {
+                // the border position of the balls and pads
+                double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
+                                maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
+                {
+                    for (size_t j = 0; j < outer_nets[i].balls_index.size(); j++) {
+                        // get the center point of the pad
+                        Point padCenter(
+                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).x, 
+                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).y);
+                        // update maxX
+                        if(maxX < padCenter.x) maxX = padCenter.x;
+                        // update minX
+                        if(minX > padCenter.x) minX = padCenter.x;
+                        // update maxY
+                        if(maxY < padCenter.y) maxY = padCenter.y;
+                        // update minY
+                        if(minY > padCenter.y) minY = padCenter.y;
+                    }
+                    for (size_t j = 0; j < outer_nets[i].dice_pads_index.size(); j++) {
+                        for (size_t k = 0; k < outer_nets[i].dice_pads_index[j].size(); k++) {
+                            // get the center point of the pad
+                            Point padCenter(
+                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).x, 
+                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).y);
+                            // update maxX
+                            if(maxX < padCenter.x) maxX = padCenter.x;
+                            // update minX
+                            if(minX > padCenter.x) minX = padCenter.x;
+                            // update maxY
+                            if(maxY < padCenter.y) maxY = padCenter.y;
+                            // update minY
+                            if(minY > padCenter.y) minY = padCenter.y;
+                        }
+                    }
+                }
+                
+                DrawContainer NetlistContainer(
+                        Point((maxX + minX) / 2.0, (maxY + minY) / 2.0),    // the middle point of pads
+                        fabs(maxX - minX),    // the x distance of pads
+                        fabs(maxY - minY)     // the y distance of pads
+                    );
+                if (pads_amount > 1)
+                {
+                    for (size_t j = 0; j < outer_nets[i].dice_pads_index.size(); j++) {
+                        for (size_t k = 0; k < outer_nets[i].dice_pads_index[j].size(); k++) {
+                            DrawLine padToCGLine(
+                                Point(    // start point is one of pad of pads1
+                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).x, 
+                                -(chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).y)), 
+                                Point(outer_nets[i].pad_car.x, -(outer_nets[i].pad_car.y)),  // end point is pads1 CG
+                                Color(1.0, 0.5, 0.5)    // ???color
+                            );
+                            NetlistContainer.push_back(&padToCGLine);
+                        }
+                    }
+                }
+                DrawLine CGToCGLine(
+                        Point(outer_nets[i].pad_car.x, -(outer_nets[i].pad_car.y)), // start point is pads CG
+                        Point(outer_nets[i].ball_car.x, -(outer_nets[i].ball_car.y)),  // end point is ball CG
+                        Color(1.0, 0.5, 0.5)    // ???color
+                    );
+                NetlistContainer.push_back(&CGToCGLine);
+                if (outer_nets[i].balls_index.size() > 1)
+                {
+                    for (size_t j = 0; j < outer_nets[i].balls_index.size(); j++) {
+                        DrawLine padToCGLine(
+                            Point(    // start point is one of pad of pads2
+                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).x, 
+                            -(chip->get_Ball_Position(outer_nets[i].balls_index[j]).y)), 
+                            Point(outer_nets[i].ball_car.x, -(outer_nets[i].ball_car.y)),  // end point is pad1s CG
+                            Color(1.0, 0.5, 0.5)    // ???color
+                        );
+                        NetlistContainer.push_back(&padToCGLine);
+                    }
+                }
+
+                // constructor the 'PhysicalObject' to pad and store it
+                g_entireObjMap["OuterNetlistMap"][outer_nets[i].relation_name] = PhysicalObject(
+                        outer_nets[i].relation_name,        // the name of the netlist
+                        NetlistContainer.getCenterPoint(),  // the center of the 
+                        NetlistContainer                                    // correspond DrawContainer
+                    );
+            }
+        }
+    }
+    
+    chip->Original_Dice_Pads();
 
     // 1. insert all pads
-    for (size_t t = 0; t < chip->get_Dice().size(); t++)
+    for (size_t i = 0; i < chip->get_Dice_Amount(); i++)
     {
         pads.clear();
-        Die die = chip->get_Die(t);
-        for (size_t tt = 0; tt < die.get_Pad_Amount(); tt++)
+        Die die = chip->get_Die(i);
+        for (size_t j = 0; j < die.get_Pad_Amount(); j++)
         {
-            temp_item.name = die.get_Pad_Name(tt);
-            temp_item.x = die.get_Cart_Position(tt).x;
-            temp_item.y = -die.get_Cart_Position(tt).y;
+            temp_item.name = die.get_Pad_Name(j);
+            temp_item.xy = Cartesian(die.get_Cart_Position(j).x, -die.get_Cart_Position(j).y);
             pads[temp_item.name] = temp_item;
         }
-	    if (t == 0) items["pad"] = pads;
-        else if (t == 1) items["pad1"] = pads;
+        stringstream ss;
+        ss << i + 1;
+        string item_name("die");
+        item_name += ss.str();
+	    items[item_name.c_str()] = pads;
     }
 
     // 2. insert all BGA balls
     for (size_t t = 0; t < chip->get_Ball_Amount(); t++)
     {
         temp_item.name = chip->get_Ball_Name(t);
-        temp_item.x = chip->get_Ball_Pos(t).x;
-        temp_item.y = -chip->get_Ball_Pos(t).y;
+        temp_item.xy = Cartesian(chip->get_Ball_Position(t).x, -chip->get_Ball_Position(t).y);
         balls[temp_item.name] = temp_item;
     }
 	items["ball"] = balls;
 
-    // 3. insert all netlists
-    vector<Die> dice = chip->get_Dice();
-    vector<InnerRelationship> inner_nets = chip->get_All_I_Netlist();
-    vector<OuterRelationship> outer_nets = chip->get_All_O_Netlist();
-    for (size_t t = 0; t < inner_nets.size(); t++)
+    // Draw Dice
+    for (size_t die_index = 0; die_index < chip->get_Dice_Amount(); die_index++)
     {
-        // NOPE!!!
-    }
-    for (size_t t = 0; t < outer_nets.size(); t++)
-    {
-        for (size_t tt = 0; tt < outer_nets[t].balls_index.size(); tt++)
-            for (size_t ttt = 0; ttt < outer_nets[t].dice_pads_index.size(); ttt++)
-                padBallPair[
-                    dice[outer_nets[t].dice_pads_index[ttt].first - 1].get_Pad_Name(outer_nets[t].dice_pads_index[ttt].second)
-                ] = chip->get_Ball_Name(outer_nets[t].balls_index[tt]);
-    }
-
-    /*for (auto i = padBallPair.begin(); i != padBallPair.end(); i++)
-	{
-		cout << fixed << setprecision(3) << "  " << pads[i->first].name << "  " << pads[i->first].x << " " << pads[i->first].y << " " << balls[i->second].name << "  " << balls[i->second].x << " " << balls[i->second].y << endl;
-	}
-	cout << pads.size() << " " << balls.size() << " " << endl;*/
-
-    //combine pads balls fingers into items
-    
-	/* second - create pad, ball drawObject and preprocessing data for Minimum-cost flow algorithm */
-    map<Group, PadGroup> padGroupMap;
-    
-    cout << "----------------\n";
-    initialize(items, padBallPair, padArtificialFingerPair, padGroupMap);
-
-    /*int count = 0;
-    for(map<Group, PadGroup>::iterator map_it = padGroupMap.begin(); map_it != padGroupMap.end(); ++map_it){
-       
-        PadGroup currentPadGroup = map_it->second;
-        map<string, string> padFingerPair;
-        vector<int> rowFingerNum;
-        int pad_number = (int)currentPadGroup.pad_name_vec.size();
-
-        count++;
-    }*/
-}
-
-void initialize(const map<string, map<string, item>> &items, 
-        const map<string, string> &padBallPair,
-        const map<string, string> &padArtificialFingerPair,
-        map<Group, PadGroup> &padGroupMap)
-{
-    const map<string, item> pads = items.at("pad"); 
-    const map<string, item> balls = items.at("ball");
-    //const map<string, item> fingers = items.at("finger");
-
-    // the border position of the IC 
-    double maxX = -2500.0, minX = 2500.0, maxY = -2500.0, minY = 2500.0;
-    // find the border position of the pad in 'pads'
-    for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it){
-        // get the center point of the pad
-        Point padCenter(map_it->second.x, map_it->second.y);
-        // update maxX
-        if(maxX < padCenter.x)
-            maxX = padCenter.x;
-        // update minX
-        if(minX > padCenter.x)
-            minX = padCenter.x;
-        // update maxY
-        if(maxY < padCenter.y)
-            maxY = padCenter.y;
-        // update minY
-        if(minY > padCenter.y)
-            minY = padCenter.y;
-    }
-
-    // print out the border position of the IC
-    cout << "minX: " << minX << endl;
-    cout << "maxX: " << maxX << endl;
-    cout << "minY: " << minY << endl;
-    cout << "maxY: " << maxY << endl;
-
-    // construct the 'PhysicalObject ic' with previous found border (maxX, minX, maxY, minY)
-    double ICWidth = maxX - minX + 2 * space;
-    double ICHeight = maxY - minY + 2 * space;
-    DrawContainer ICContainer(
-            Point(), 
-            ICWidth, 
-            ICHeight
-            );
-    DrawRectangle ICRect(
-            Point(GOD_Center.x, GOD_Center.y),
-            Color(1.0, 1.0, 0.0),
-            ICWidth,
-            ICHeight,
-            cairo_stroke
-            );
-
-    ICContainer.push_back(&ICRect);
-
-    // initialize the 'PadGroup' (UP, DOWN, LEFT, RIGHT) and insert them in 'padGroupMap'
-    padGroupMap.insert(pair<Group, PadGroup>(Group::UP, PadGroup()));
-    padGroupMap.insert(pair<Group, PadGroup>(Group::DOWN, PadGroup()));
-    padGroupMap.insert(pair<Group, PadGroup>(Group::LEFT, PadGroup()));
-    padGroupMap.insert(pair<Group, PadGroup>(Group::RIGHT, PadGroup()));
-    
-    // according to the position of the pad, put it to the suitable 'PadGroup'
-    for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it){
-        // get the center point of the pad
-        Point padCenter(map_it->second.x, map_it->second.y);
-        // the vertical and horizontal 'Group'
-        Group groupV, groupH;
-        // the ratio of pad width/height to maximum width/height
-        double nearV, nearH;
-
-        // calculate the ratio
-        nearV = (maxY - padCenter.y) / (maxY - minY);
-        nearH = (maxX - padCenter.x) / (maxX - minX);
+        // the border position of the die
+        double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
+                        maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
         
-        // if 'nearV' is less than or equal to 0.5, the y position of pad is near to 'Group::DOWN'
-        // otherwise it is near to 'Group::UP'
-        if(nearV <= 0.5){
-            groupV = Group::DOWN;
-        }
-        else{
-            groupV = Group::UP;
-            nearV = 1.0 - nearV;
-        }
-
-        // if 'nearH' is less than or equal to 0.5, the x position of pad is near to 'Group::RIGHT'
-        // otherwise it is near to 'Group::LEFT'
-        if(nearH <= 0.5){
-            groupH = Group::RIGHT;
-        }
-        else{
-            groupH = Group::LEFT;
-            nearH = 1.0 - nearH;
-        }
+        stringstream ss;
+        ss << die_index + 1;
+        string item_name("die");
+        item_name += ss.str();
+        const map<string, item> pads = items.at(item_name);
+        cout << "size of " << item_name << ": " << pads.size() << endl;
         
-        // if 'nearV' is greater than 'nearH', the pad is belong to 'groupH'
-        // otherwise it is belong to 'groupV'
-        if(nearV > nearH)
-            groupV = groupH;
-        // put the pad's name into its 'PadGroup'
-        padGroupMap[groupV].pad_name_vec.push_back(map_it->first);
-        
-        // create 'PhysicalObject' Object to each pad and store it into 'g_entireObjMap' with key "padMap"
-        DrawContainer padContainer(
-                padCenter, 
-                pad_width, 
-                pad_height
-                );
-        DrawRectangle padRect(
-                padCenter,              // the center of the pad
-                Color(1.0, 1.0, 0.0),   // yellow
-                pad_width,              // the width of the pad
-                pad_height,             // the height of the pad
-                cairo_stroke            // use stroke drawMethod
-                );
-        // if Group is 'LEFT' rotate counterclockwise degree 90
-        if(groupV == Group::LEFT)
-            padContainer.rotate(-1.57);
-        // if Group is 'RIGHT' rotate clockwise degree 90
-        else if(groupV == Group::RIGHT)
-            padContainer.rotate(1.57);
-
-        // put 'padRect' into 'padContainer'
-        padContainer.push_back(&padRect);
-
-        // constructor the 'PhysicalObject' to pad and store it
-        /*g_entireObjMap["padMap"][map_it->first"1"] = PhysicalObject(
-                map_it->first"2",                  // the name of the pad
-                padContainer.getCenterPoint(),  // the center of the pad
-                padContainer                    // correspond DrawContainer
-                );*/
-        //g_entireObjMap["padMap"][map_it->first].addRelation(pair<string, string>("ballMap", /*padBallPair.at(map_it->first)*/"1"));
-    }
-
-    // pad2
-    if (items.find("pad1") != items.end())
-    {
-        // the border position of the IC 
-        double maxX = -2500.0, minX = 2500.0, maxY = -2500.0, minY = 2500.0;
-        const map<string, item> pads1 = items.at("pad1"); 
-        for(map<string, item>::const_iterator map_it = pads1.begin(); map_it != pads1.end(); ++map_it){
+        // find the border position of the pads in "pad + die_index"
+        for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it){
             // get the center point of the pad
-            Point padCenter(map_it->second.x, map_it->second.y);
+            Point padCenter(map_it->second.xy.x, map_it->second.xy.y);
             // update maxX
-            if(maxX < padCenter.x)
-                maxX = padCenter.x;
+            if(maxX < padCenter.x) maxX = padCenter.x;
             // update minX
-            if(minX > padCenter.x)
-                minX = padCenter.x;
+            if(minX > padCenter.x) minX = padCenter.x;
             // update maxY
-            if(maxY < padCenter.y)
-                maxY = padCenter.y;
+            if(maxY < padCenter.y) maxY = padCenter.y;
             // update minY
-            if(minY > padCenter.y)
-                minY = padCenter.y;
+            if(minY > padCenter.y) minY = padCenter.y;
         }
 
-        // print out the border position of the IC
-        cout << "minX: " << minX << endl;
-        cout << "maxX: " << maxX << endl;
-        cout << "minY: " << minY << endl;
-        cout << "maxY: " << maxY << endl;
-
-        // construct the 'PhysicalObject ic' with previous found border (maxX, minX, maxY, minY)
-        double ICWidth = maxX - minX + 2 * space;
-        double ICHeight = maxY - minY + 2 * space;
-        DrawRectangle ICRect(
-                Point(GOD_GOD_Center.x, GOD_GOD_Center.y),
-                Color(1.0, 1.0, 0.0),
-                ICWidth,
-                ICHeight,
+        // print out the border position of the die
+        cout << "die " << die_index + 1 << ": " << endl
+                  << "  minX: " << minX << endl
+                  << "  maxX: " << maxX << endl
+                  << "  minY: " << minY << endl
+                  << "  maxY: " << maxY << endl;
+        // construct the 'PhysicalObject Die' with previous found border (maxX, minX, maxY, minY)
+        double DieWidth = maxX - minX + 2 * chip->drc.spacing;
+        double DieHeight = maxY - minY + 2 * chip->drc.spacing;
+        DrawContainer DieContainer(
+                Point(chip->get_Die_Center(die_index).x, -chip->get_Die_Center(die_index).y),   // the center of the die
+                DieWidth, 
+                DieHeight
+            );
+        DrawRectangle DieRect(
+                Point(chip->get_Die_Center(die_index).x, -chip->get_Die_Center(die_index).y),   // the center of the die
+                Color(1.0, 1.0, 0.0),   // yellow
+                DieWidth,   // the width of the die
+                DieHeight,  // the height of the die
                 cairo_stroke
-                );
-
-        ICContainer.push_back(&ICRect);
-
-        g_entireObjMap["IC"]["ic"] = PhysicalObject(
-                "ic",
-                ICContainer.getCenterPoint(),
-                ICContainer
-                );
-
-        // initialize the 'PadGroup' (UP, DOWN, LEFT, RIGHT) and insert them in 'padGroupMap'
-        padGroupMap.insert(pair<Group, PadGroup>(Group::UP, PadGroup()));
-        padGroupMap.insert(pair<Group, PadGroup>(Group::DOWN, PadGroup()));
-        padGroupMap.insert(pair<Group, PadGroup>(Group::LEFT, PadGroup()));
-        padGroupMap.insert(pair<Group, PadGroup>(Group::RIGHT, PadGroup()));
+            );
         
+        DieContainer.push_back(&DieRect);
+
         // according to the position of the pad, put it to the suitable 'PadGroup'
-        for(map<string, item>::const_iterator map_it = pads1.begin(); map_it != pads1.end(); ++map_it){
+        for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it)
+        {
             // get the center point of the pad
-            Point padCenter(map_it->second.x, map_it->second.y);
+            Point padCenter(map_it->second.xy.x, map_it->second.xy.y);
             // the vertical and horizontal 'Group'
             Group groupV, groupH;
             // the ratio of pad width/height to maximum width/height
@@ -363,12 +464,8 @@ void initialize(const map<string, map<string, item>> &items,
                 nearH = 1.0 - nearH;
             }
             
-            // if 'nearV' is greater than 'nearH', the pad is belong to 'groupH'
-            // otherwise it is belong to 'groupV'
-            if(nearV > nearH)
-                groupV = groupH;
-            // put the pad's name into its 'PadGroup'
-            padGroupMap[groupV].pad_name_vec.push_back(map_it->first);
+            // if 'nearV' is greater than 'nearH', the pad is belong to 'groupH', otherwise it is belong to 'groupV'
+            if(nearV > nearH) groupV = groupH;
             
             // create 'PhysicalObject' Object to each pad and store it into 'g_entireObjMap' with key "padMap"
             DrawContainer padContainer(
@@ -383,106 +480,63 @@ void initialize(const map<string, map<string, item>> &items,
                     pad_height,             // the height of the pad
                     cairo_stroke            // use stroke drawMethod
                     );
+
+            
             // if Group is 'LEFT' rotate counterclockwise degree 90
             if(groupV == Group::LEFT)
                 padContainer.rotate(-1.57);
             // if Group is 'RIGHT' rotate clockwise degree 90
             else if(groupV == Group::RIGHT)
                 padContainer.rotate(1.57);
+            
+            // original rotation
+            if (chip->get_Die_Index(map_it->first) == 0 && ori_rotas.size() > 0) padContainer.rotate(-(chip->get_Die_Pad_Rotation(die_index, map_it->first)-(ori_rotas[0] + GOD_Rotation)));
+            else if (chip->get_Die_Index(map_it->first) == 1 && ori_rotas.size() > 1) padContainer.rotate(-(chip->get_Die_Pad_Rotation(die_index, map_it->first)-(ori_rotas[1] + GOD_GOD_Rotation)));
+            else padContainer.rotate(-chip->get_Die_Pad_Rotation(die_index, map_it->first));
 
             // put 'padRect' into 'padContainer'
             padContainer.push_back(&padRect);
-
-            // constructor the 'PhysicalObject' to pad and store it
-            /*g_entireObjMap["padMap"][map_it->first"1"] = PhysicalObject(
-                    map_it->first"2",                  // the name of the pad
-                    padContainer.getCenterPoint(),  // the center of the pad
-                    padContainer                    // correspond DrawContainer
-                    );*/
-            //g_entireObjMap["padMap"][map_it->first].addRelation(pair<string, string>("ballMap", /*padBallPair.at(map_it->first)*/"1"));
-        }
-    }
-    
-
-    // calculate the parameter and sort the 'pad_name_vec' in the struct 'PadGroup'
-    /*for(map<Group, PadGroup>::iterator map_it = padGroupMap.begin(); map_it != padGroupMap.end(); ++map_it){
-        // copy the 'PadGroup' member 'pad_name_vec'
-        vector<string> pad_name_vec(map_it->second.pad_name_vec);
-        // use to sort the 'pad_name_vec'
-        vector<pair<double, string>> padGroupSorted((int)pad_name_vec.size(), pair<double, string>());
-
-        // set the 'group' (useless for now)
-        map_it->second.group = map_it->first;
-
-        // if 'Group' is equal to 'UP' or 'DOWN', 'padGroupSorted' is sorted by x position
-        // otherwise, it is sorted by y position
-        if(map_it->first == Group::UP || map_it->first == Group::DOWN){
-            for(int i = 0; i < (int)pad_name_vec.size(); ++i){
-                padGroupSorted[i].first = pads.at(pad_name_vec[i]).x;
-                padGroupSorted[i].second = pad_name_vec[i];
-            }
-        }
-        else if(map_it->first == Group::LEFT || map_it->first == Group::RIGHT){
-            for(int i = 0; i < (int)pad_name_vec.size(); ++i){
-                padGroupSorted[i].first = pads.at(pad_name_vec[i]).y;
-                padGroupSorted[i].second = pad_name_vec[i];
-            }
-        }
-       
-        // sort the 'padGroupSorted' with ascending order 
-        sort(padGroupSorted.begin(), padGroupSorted.end());
-        map_it->second.leftmost_pos = padGroupSorted.front().first;
-        map_it->second.rightmost_pos = padGroupSorted.back().first;
-
-        // update the 'pad_name_vec' with 'padGroupSorted'
-        for(int i = 0; i < (int)padGroupSorted.size(); ++i){
-            map_it->second.pad_name_vec[i] = padGroupSorted[i].second;
-        }
-
-        // calculate the 'avg_height'
-        map_it->second.avg_height = 0.0;
-        // if 'Group' is equal to 'UP' or 'DOWN', 'avg_height' is increased by y position of the pad
-        // otherwise, it is increased by x position of the pad
-        if(map_it->first == Group::UP || map_it->first == Group::DOWN){
-            for(int i = 0; i < (int)pad_name_vec.size(); ++i){
-                map_it->second.avg_height += pads.at(padGroupSorted[i].second).y;
-            }
-        }
-        else if(map_it->first == Group::LEFT || map_it->first == Group::RIGHT){
-            for(int i = 0; i < (int)pad_name_vec.size(); ++i){
-                map_it->second.avg_height += pads.at(padGroupSorted[i].second).x;
-            }
+            DieContainer.push_back(&padContainer);
         }
         
-        // average the 'avg_height'
-        map_it->second.avg_height /= (int)pad_name_vec.size();
+        if (die_index == 0) {
+            if (ori_rotas.size() > 0) DieContainer.rotate(-(ori_rotas[0] + GOD_Rotation));
+        }
+        else if (die_index == 1) {
+            if (ori_rotas.size() > 1) DieContainer.rotate(-(ori_rotas[1] +  GOD_GOD_Rotation));
+        }
+        
+        // constructor the 'PhysicalObject' to pad and store it
+        g_entireObjMap["DiceMap"][item_name] = PhysicalObject(
+                item_name,    // the name of the die
+                DieContainer.getCenterPoint(),  // the center of the die
+                DieContainer                                    // correspond DrawContainer
+                );
+    }
 
-        // print out the parameter in struct 'PadGroup' 
-        cout << "---" << static_cast<underlying_type<Group>::type>(map_it->first) << "---\n";
-        cout << "leftmost_pos: " << map_it->second.leftmost_pos << endl;
-        cout << "rightmost_pos: " << map_it->second.rightmost_pos << endl;
-        cout << "avg_height: " << map_it->second.avg_height << endl;
-    }*/
-
+    // Draw BGA Ball
     // create 'PhysicalObject' object to each ball and store it into 'g_entireObjMap' with key 'ballMap'
-    for(map<string, item>::const_iterator map_it = balls.begin(); map_it != balls.end(); ++map_it){
+    const map<string, item> all_balls = items.at("ball");
+    for(map<string, item>::const_iterator map_it = all_balls.begin(); map_it != all_balls.end(); ++map_it)
+    {
         // the name of the ball
         string ballName = map_it->first;
         // the center of the ball
-        Point ballCenter(map_it->second.x, map_it->second.y);
+        Point ballCenter(map_it->second.xy.x, map_it->second.xy.y);
+        
         // the 'DrawContainer' of the ball
         DrawContainer ballContainer(
                 ballCenter, 
-                2 * ball_radius, 
-                2 * ball_radius
-                );
+                chip->drc.ballDiameter, 
+                chip->drc.ballDiameter
+            );
         // the draw pattern of the ball
         DrawCircle ballCircle(
-                ballCenter,             // the center of the ball
+                ballCenter,                 // the center of the ball
                 Color(0.0, 0.0, 1.0),   // blue
-                ball_radius,            // the radius of the ball
+                chip->drc.ballDiameter / 2.0,   // the radius of the ball
                 cairo_stroke            // use stroke drawMethod
-                );
+            );
         
         // put 'ballCircle' into 'ballContainer'
         ballContainer.push_back(&ballCircle);
@@ -494,135 +548,36 @@ void initialize(const map<string, map<string, item>> &items,
         ballContainer.push_back(&ballCircle);
 
         // construct the 'PhysicalObject' with ball and store it
-        g_entireObjMap["ballMap"][ballName] = PhysicalObject(
+        g_entireObjMap["BallMap"][ballName] = PhysicalObject(
                 ballName,                       // the name of the ball
                 ballContainer.getCenterPoint(), // the center of the ball
                 ballContainer                   // the DrawContainer of the ball
-                );
+            );
     }
-
-    // create 'PhysicalObject' object to each pair of pad and ball and store it into 'g_entireObjMap' with key 'padToBallMap'
-    for(map<string, PhysicalObject>::iterator map_it = g_entireObjMap["padMap"].begin(); map_it != g_entireObjMap["padMap"].end(); ++map_it){
-        // the center of the pad
-        Point padCenter(map_it->second.getCenter());
-        // the center of the ball
-        Point ballCenter(
-            g_entireObjMap["ballMap"][padBallPair.at(map_it->first)].getCenter());
-        // the 'DrawContainer' of the padToBall
-        DrawContainer padToBallContainer(
-                (padCenter + ballCenter) / 2.0,     // the middle point between padCenter and ballCenter
-                fabs(padCenter.x - ballCenter.x),   // the x distance between padCenter and ballCenter
-                fabs(padCenter.y - ballCenter.y)   // the y distance between padCenter and ballCenter
-                );
-        DrawLine padToBallLine(
-                padCenter,              // start point is padCenter
-                ballCenter,             // end point is ballCenter
-                Color(0.5, 0.3, 0.4)    //
-                );
-
-        // put 'padToBallLine' into 'padToBallContainer'
-        padToBallContainer.push_back(&padToBallLine);
-
-        // construct the 'PhysicalObject' with padToBall and store it
-        g_entireObjMap["padToBallMap"][map_it->first] = PhysicalObject(
-                map_it->first,                          // the name of the pad
-                padToBallContainer.getCenterPoint(),         // the center of the padToBall    
-                padToBallContainer                      // the DrawContainer of the padToBall
-                );
-    }
-
-    // create 'PhysicalObject' object to each artificial finger and store it into 'g_entireObjMap' with key 'artificialFingerMap'
-    /*for(map<string, item>::const_iterator map_it = fingers.begin(); map_it != fingers.end(); ++map_it){
-        //cout << map_it->first << " " << map_it->second.x << " " << map_it->second.y << endl;
-        // the name of the artifical finger
-        string artificialFingerName = map_it->first;
-        // the center of the artificial finger
-        Point artificialFingerCenter(map_it->second.x, map_it->second.y);
-        // the 'DrawContainer' of the artificial finger
-        DrawContainer artificialFingerContainer(
-                artificialFingerCenter, 
-                finger_width, 
-                finger_height);
-        // the draw pattern of the artificial finger
-        DrawRectangle artificialFingerRect(
-                artificialFingerCenter, // the center of the artificial finger
-                Color(1.0, 1.0, 1.0),   // white
-                finger_width,           // the width of the artificial finger
-                finger_height,          // the height of the artificial finger      
-                cairo_fill              // use stroke drawMethod
-                );
-        
-        // put 'artificialFingerRect' into 'artificialFingerContainer'
-        artificialFingerContainer.push_back(&artificialFingerRect);
-        
-        string padName;
-
-        for(map<string, string>::const_iterator map_it = padArtificialFingerPair.begin(); map_it != padArtificialFingerPair.end(); ++map_it){
-            if(map_it->second == artificialFingerName){
-                padName = map_it->first;
-                break;
-            }
-        }
-
-        Group padGroup;
-
-        for(map<Group, PadGroup>::iterator map_it = padGroupMap.begin(); map_it != padGroupMap.end(); ++map_it){
-            vector<string>::iterator vec_it = find(map_it->second.pad_name_vec.begin(), map_it->second.pad_name_vec.end(), padName);
-            
-            if(vec_it != map_it->second.pad_name_vec.end()){
-                padGroup = map_it->second.group;
-                break;
-            }
-        }
-        
-        if(padGroup == Group::LEFT){
-            artificialFingerContainer.rotate(-1.57);
-        }
-        else if(padGroup == Group::RIGHT){
-            artificialFingerContainer.rotate(1.57);
-        }
-
-        // construct the 'PhysicalObject' with artificial finger and store it
-        g_entireObjMap["artificialFingerMap"][artificialFingerName] = PhysicalObject(
-                artificialFingerName,                       // the name of the artificial finger
-                artificialFingerContainer.getCenterPoint(), // the center of the atificial finger
-                artificialFingerContainer                   // the DrawContainer of the artificial finger
-                );
-        
-    }*/
-
-    //cout << padArtificialFingerPair.size() << endl;
-    //cout << fingers.size() << endl;
-    // create 'PhysicalObject' object to each pair of pad and artificial finger and store it into 'g_entireObjMap' with key 'padToArtificialFingerMap'
-    /*for(map<string, PhysicalObject>::iterator map_it = g_entireObjMap["padMap"].begin(); map_it != g_entireObjMap["padMap"].end(); ++map_it){
-        // the center of the pad
-        Point padCenter(map_it->second.getCenter());
-        // the center of the artificial finger
-        cout << map_it->first;
-        cout << padArtificialFingerPair.at(map_it->first) << endl;
-        Point artificialFingerCenter(g_entireObjMap["artificialFingerMap"][padArtificialFingerPair.at(map_it->first)].getCenter());
-        // the 'DrawContainer' of the padToArtificialFinger
-        DrawContainer padToArtificialFingerContainer(
-                (padCenter + artificialFingerCenter) / 2.0,     // the middle point between padCenter and artificialFingerCenter
-                fabs(padCenter.x - artificialFingerCenter.x),   // the x distance between padCenter and artificialFingerCenter
-                fabs(padCenter.y - artificialFingerCenter.y)   // the y distance between padCenter and artificialFingerCenter
-                );
-        DrawLine padToArtificialFingerLine(
-                padCenter,              // start point is padCenter
-                artificialFingerCenter, // end point is artificialFingerCenter
-                Color(0.5, 0.3, 0.4)    //
-                );
-
-        // put 'padToArtificialFingerLine' into 'padToArtificialFingerContainer'
-        padToArtificialFingerContainer.push_back(&padToArtificialFingerLine);
-
-        // construct the 'PhysicalObject' with padToArtificialFinger and store it
-        g_entireObjMap["padToArtificialFingerMap"][map_it->first] = PhysicalObject(
-                map_it->first,                                      // the name of the pad
-                padToArtificialFingerContainer.getCenterPoint(),    // the center of the padToArtificialFinger    
-                padToArtificialFingerContainer                      // the DrawContainer of the padToArtificialFinger
-                );
-    }*/
+    
+    // Draw Substrate
+    // the 'DrawContainer' of the substrate
+    DrawContainer SubstrateContainer(
+            Point(), 
+            chip->drc.packageSize.x, 
+            chip->drc.packageSize.y
+        );
+    // the draw pattern of the ball
+    DrawRectangle SubstrateRect(
+            Point(),                 // the center of the substrate
+            Color(0.0, 0.0, 1.0),   // blue
+            chip->drc.packageSize.x,   // the width of the substrate
+            chip->drc.packageSize.y,   // the height of the substrate
+            cairo_stroke            // use stroke drawMethod
+        );
+    SubstrateContainer.push_back(&SubstrateRect);
+    
+    // construct the 'PhysicalObject' with substrate and store it
+    g_entireObjMap["SubstrateMap"]["substrate"] = PhysicalObject(
+            "substrate",                       // the name of the substrate
+            SubstrateContainer.getCenterPoint(), // the center of the substrate
+            SubstrateContainer                   // the DrawContainer of the substrate
+        );
 
     //double artificialDistance = 0.0;
     //double totalPadToFingerDistance = 0.0;

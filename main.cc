@@ -1,10 +1,11 @@
 #include"main.h"
+#include"file_analyst.h"
 
 Chip *chip = nullptr;
 
 int LP_out = -1;
 int M_out = -1;
-int GUI = false;
+int GUI = -1;
 bool min_output = true;
 bool ignore_P_G = false;
 
@@ -13,23 +14,39 @@ double GOD_Rotation = 0.0;
 Cartesian GOD_GOD_Center(0.0, 0.0);
 double GOD_GOD_Rotation = 0.0;
 
+vector<double> ori_rotas;
+
 int main(int argc, char* argv[])
 {
     chip = new Chip;
 
-    std::ifstream pad2ball_fin;
-    pad2ball_fin.clear();
-
     check_argument(argc, argv);
 
-    if (chip->parser(argc, argv) == -1) {
+    // Set GOD parameter
+    if (GUI != -1)
+    {
+        if (GUI + 3 < argc) {
+            GOD_Center.x = stod(argv[GUI + 1]);
+            GOD_Center.y = stod(argv[GUI + 2]);
+            GOD_Rotation = stod(argv[GUI + 3]) * M_PI / 180;
+            if (GUI + 6 < argc) {
+                GOD_GOD_Center.x = stod(argv[GUI + 4]);
+                GOD_GOD_Center.y = stod(argv[GUI + 5]);
+                GOD_GOD_Rotation = stod(argv[GUI + 6]) * M_PI / 180;
+                if (GUI + 8 < argc) {
+                    ori_rotas.push_back(stod(argv[GUI + 7]) * M_PI / 180);
+                    ori_rotas.push_back(stod(argv[GUI + 8]) * M_PI / 180);
+                }
+            }
+        }
+    }
+
+    if (parser(argc, argv) == -1) {
         std::cout << "Program terminated because file open error!\n";
         return 0;
     }
-    
-    // chip.netlist_Content();
 
-    // Output "netlist.lp" file
+    // Output .lp file
     if (LP_out != -1)
     {
         std::ofstream LP_file;
@@ -47,6 +64,7 @@ int main(int argc, char* argv[])
         std::cout << "\n----------output \"" << argv[LP_out + 1] << "\" file done!----------\n";
     }
 
+    // Output .m file
     if (M_out != -1)
     {
         std::ofstream M_file;
@@ -64,19 +82,9 @@ int main(int argc, char* argv[])
         std::cout << "\n----------output \"" << argv[M_out + 1] << "\" file done!----------\n";
     }
 
-    if (GUI)
+    // Show GUI
+    if (GUI != -1)
     {
-        if (GUI + 3 < argc) {
-            GOD_Center.x = stod(argv[GUI + 1]);
-            GOD_Center.y = stod(argv[GUI + 2]);
-            GOD_Rotation = stod(argv[GUI + 3]);
-            if (GUI + 6 < argc) {
-                GOD_GOD_Center.x = stod(argv[GUI + 4]);
-                GOD_GOD_Center.y = stod(argv[GUI + 5]);
-                GOD_GOD_Rotation = stod(argv[GUI + 6]);
-            }
-        }
-
         WindowApp app;
         dataTransfer();
         app.Run(argc, argv);

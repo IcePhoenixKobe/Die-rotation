@@ -301,10 +301,10 @@ static gboolean checkButton_toggled(GtkToggleButton *toggleButton, gpointer user
             for(auto map_it2 = map_it->second.begin(); map_it2 != map_it->second.end(); ++map_it2){
                 
                 if(state == TRUE){
-                    map_it2->second.drawContainer.setIsVisible(true);    
+                    map_it2->second.drawContainer.setIsVisible(true);
                 }
                 else if(state == FALSE){
-                    map_it2->second.drawContainer.setIsVisible(false);    
+                    map_it2->second.drawContainer.setIsVisible(false);
                 }
             }
         }
