@@ -5,150 +5,83 @@ using namespace std;
 /* 
     Ball class defination
 */
-// Default Constructor
-Ball::Ball()
-{
-    amount = 0;
-    name.clear();
-    position.clear();
-}
-
-// Constructor
-Ball::Ball(size_t ball_num)
-{
-    amount = ball_num;
-    name.clear();
-    position.clear();
-    name.resize(amount);
-    position.resize(amount);
-    for (size_t i = 0; i < position.size(); i++) {
-        name[i] = "unknown";
-        position[i].x = 0.0;
-        position[i].y = 0.0;
-    }
-}
-
-// Use BGA ball name to get index of vector
-size_t Ball::get_Ball_Index(string str) const
-{
-    for (size_t t = 0; t < name.size(); t++)
-        if (name[t] == str)
-            return t;
-    return -1;
-}
 
 /* 
     Die class defination
 */
-// Constructor with pad amount
-Die::Die(size_t die_pad_amount) : center(Cartesian(0.0, 0.0))
+// Get all pin number
+vector<string> Die::get_Pads_Number() const
 {
-    Clear_Pad();
-    Resize_Pad(die_pad_amount);
+    vector<string> return_vector;
+    return_vector.clear();
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
+        return_vector.push_back(map_it->first);
+    return return_vector;
 }
 
-// Constructor with pad amount and die center
-Die::Die(size_t die_pad_amount, Cartesian xy) : center(xy)
+// Get all pin name
+vector<string> Die::get_Pads_Name() const
 {
-    Clear_Pad();
-    Resize_Pad(die_pad_amount);
+    vector<string> return_vector;
+    return_vector.clear();
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
+        return_vector.push_back(map_it->second.name);
+    return return_vector;
 }
 
-// Clear the position and position
-void Die::Clear_Pad()
+// Get all pin location-xy
+map<string, Cartesian> Die::get_Pads_Location() const
 {
-    amount = 0;
-    name.clear();
-    rotation.clear();
-    position.clear();
+   map<string, Cartesian> return_map;
+    return_map.clear();
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
+        return_map[map_it->first] = map_it->second.xy;
+    return return_map;
 }
 
-/* Resize the pads name and position, and set all element 
- * of name and position to "umknownPad" and (0.0, 0.0).
- * */
-void Die::Resize_Pad(size_t size)
+// Get all pin rotation
+map<string, double> Die::get_Pads_Rotation() const
 {
-    amount = size;
-    name.resize(size);
-    position.resize(size);
-    rotation.resize(size);
-    for (size_t i = 0; i < size; i++) {
-        name[i] = "unknownPad";
-        position[i].first = Cartesian(0.0, 0.0);
-        position[i].second = Polar(0.0, 0.0);
-        rotation[i] = 0.0;
-    }
+    map<string, double> return_map;
+    return_map.clear();
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
+        return_map[map_it->first] = map_it->second.rotation;
+    return return_map;
 }
 
-// Use die pad name to get index of (name) vector
-size_t Die::get_Pad_Index(string str) const
+// Get all pin radian of rotation
+map<string, double> Die::get_Pads_Radian()
 {
-    for (size_t i = 0; i < name.size(); i++)
-        if (name[i].find(str) != string::npos)
-            return i;
-    return -1UL;
+    map<string, double> return_map;
+    return_map.clear();
+    for (map<string, item>::iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
+        return_map[map_it->first] = map_it->second.getRadian();
+    return return_map;
 }
 
-// Clear all pad and set
-void Die::set_Pads(vector<string> par_name, vector<Cartesian> par_position, vector<double> par_rotation)
+/*void Die::Original_Location()
 {
-    // Clear all pads
-    Clear_Pad();
-
-    assert(par_name.size() == par_position.size());
-    assert(par_position.size() == par_rotation.size());
-
-    // Set amount
-    amount = par_name.size();
-    
-    // Set all pads(name  and position(Cartesian))
-    name = par_name;
-    for (vector<Cartesian>::iterator it = par_position.begin(); it != par_position.end(); it++) {
-        position.push_back(make_pair(*it, Polar(0.0, 0.0)));
-    }
-
-    // Set all pads rotations
-    rotation = par_rotation;
-
-    // Set all pads polar coordinate
-    for (size_t i = 0; i < position.size(); i++)
-    {
-        //cout << "pad " << i + 1 << ":";
-
-        // calculate radius
-        position[i].second = convert_cart_to_polar(position[i].first);
-
-        //cout << "\tradius = " << position[i].second.radius;
-        //cout << "\ttheta = " << position[i].senond.angle << endl;
-    }
-    return;
-}
-
-void Die::Original_Position()
-{
-    assert(name.size() == position.size());
-    assert(position.size() == rotation.size());
     for (size_t i = 0; i < name.size(); i++)
     {
         double temp_rotation = rotation[i];
         while (temp_rotation >= M_PI_2) temp_rotation -= M_PI_2;
         while (temp_rotation <= M_PI_2) temp_rotation += M_PI_2;
         temp_rotation -= M_PI_2;
-        position[i].first = Cartesian(
+        location[i].first = Cartesian(
                     (
-                        (position[i].first.x - center.x) * cos(-temp_rotation) 
-                        - (position[i].first.y - center.y) * sin(-temp_rotation)
+                        (location[i].first.x - center.x) * cos(-temp_rotation) 
+                        - (location[i].first.y - center.y) * sin(-temp_rotation)
                     ) + center.x
                 , (
-                        (position[i].first.x - center.x) * sin(-temp_rotation) 
-                        + (position[i].first.y - center.y) * cos(-temp_rotation)
+                        (location[i].first.x - center.x) * sin(-temp_rotation) 
+                        + (location[i].first.y - center.y) * cos(-temp_rotation)
                     ) + center.y
             );
-        position[i].second = convert_cart_to_polar(position[i].first);
+        location[i].second = convert_cart_to_polar(location[i].first);
     }
     
     return;
-}
+}*/
 
 /* 
     Chip class defination
@@ -156,10 +89,10 @@ void Die::Original_Position()
 // Constructor
 Chip::Chip()
 {
-    balls = Ball();
+    balls.clear();
     dice.clear();
-    inner_netlist.clear();
-    outer_netlist.clear();
+    internal_netlist.clear();
+    external_netlist.clear();
 }
 
 // Output basic data
@@ -184,109 +117,169 @@ void Chip::basic_infomation()
 // Output data of BGA balls
 void Chip::balls_Content()
 {
-    cout << "\n----------Ball content----------\n"
-     << "amount: " << balls.get_Amount() << endl;
-    vector<string> name;
-    name = balls.get_All_Name();
-    vector<Cartesian> position;
-    position = balls.get_All_Position();
-    for (size_t i = 0; i < position.size(); i++)
-        cout << fixed << setprecision(3) << setw(4) << i + 1 << " " << setw(8) << name[i]
-         << " x: " << setw(10) << position[i].x << ", y: " << setw(10) << position[i].y << endl;
-    cout << "----------Ball content----------\n";
+    cout << "\n----------Ball Content----------\n"
+     << "amount: " << balls.size() << endl;
+    for (map<string, Ball>::const_iterator ball_it = balls.begin(); ball_it != balls.end(); ball_it++)
+        cout << fixed << setprecision(3) 
+            << setw(8) << ball_it->first 
+            << " (x,y): (" 
+            << setw(10) << ball_it->second.get_Location().x 
+            << setw(10) << ball_it->second.get_Location().y << ")\n";
+    cout << "----------Ball Content----------\n";
     return;
 }
 
 // Output data of dice
 void Chip::dice_Content()
 {
-    cout << "\n----------Dice content----------\n"
-     << "amount: " << dice.size() << endl;
-    for (size_t index = 0; index < dice.size(); index++)
+    cout << "\n----------Dice Content----------\n"
+     << "Amount: " << dice.size() << endl;
+    for (size_t die_index = 0; die_index < dice.size(); die_index++)
     {
-        cout << "\nDie " << index + 1 << ":"
-         << "\ncenter: " << dice[index].get_Center().x << " " << dice[index].get_Center().y
-         << "\npad amount: " << dice[index].get_Pad_Amount() << endl;
-        vector<string> name;
-        name = dice[index].get_Pads_Name();
-        vector<pair<Cartesian, Polar>> position;
-        position = dice[index].get_Pads_Position();
-        vector<double> rotation;
-        rotation = dice[index].get_Pads_Rotation();
-        assert(name.size() == position.size());
-        assert(position.size() == rotation.size());
-        for (size_t i = 0; i < position.size(); i++) {
-            cout << fixed << setprecision(3) << setw(4) << i + 1 << " " << setw(8) << name[i]
-                            << " x: " << setw(10) << position[i].first.x 
-                            << ", y: " << setw(10)<< position[i].first.y
-                            << " | r: " << setw(9)<< position[i].second.radius 
-                            << ", theta: " << setw(7) << position[i].second.angle * 180 / M_PI
-                            << ", rotation: " << setw(7) << rotation[i] * 180 / M_PI << endl;
+        cout << "\nDIE " << die_index + 1 << ":\n"
+            << "Center: (" << dice[die_index].get_Center().x << ", " << dice[die_index].get_Center().y << ")\n"
+            << "Pad amount: " << dice[die_index].get_Pads_Amount() << endl;
+        
+        map<string, item> pads = dice[die_index].get_Pads();
+        for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++) {
+            Polar pad_pol = convert_cart_to_polar(map_it->second.xy);
+            cout << fixed << setprecision(3) << setw(9) << map_it->first
+                            << " (x,y): (" << setw(10) << map_it->second.xy.x << ", " << setw(10)<< map_it->second.xy.y << ")"
+                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle
+                            << " rotation: " << setw(7) << map_it->second.rotation << endl;
         }
     }
-    cout << "----------Dice content----------\n";
+    cout << "----------Dice Content----------\n";
     return;
 }
 
 // Output data of netlist
 void Chip::netlist_Content()
 {
-    cout << "\n----------Netlist content----------\n"
+    cout << "\n----------Netlist Content----------\n"
      << "Outer Netlist: \n"
-     << "amount: " << outer_netlist.size() << endl;
-    for (size_t i = 0; i < outer_netlist.size(); i++)
+     << "Amount: " << external_netlist.size() << endl;
+    int count = 1;
+    for (map<string, relationship>::const_iterator map_it = external_netlist.begin(); map_it != external_netlist.end(); map_it++, count++)
     {
-        cout << setw(4) << i + 1 << " " << setw(10) << outer_netlist[i].relation_name << ": ";
-        for (size_t j = 0; j < outer_netlist[i].balls_index.size(); j++)
-            cout << "\n\t" << balls.get_Name(outer_netlist[i].balls_index[j]);
-        cout << "\n\t-->\n";
-        for (size_t j = 0; j < outer_netlist[i].dice_pads_index.size(); j++)
-            for (size_t k = 0; k < outer_netlist[i].dice_pads_index[j].size(); k++)
-                cout << "\t" << dice[j].get_Pad_Name(outer_netlist[i].dice_pads_index[j][k]) << endl;
+        cout << setw(4) << count << " " << setw(10) << map_it->first << ": ";
+        for (size_t index = 0; index < map_it->second.pins1.size(); index++)
+            cout << "\n\t" << map_it->second.pins1[index];
+        cout << "\n\t↓\n";
+        for (size_t index = 0; index < map_it->second.pins2.size(); index++)
+            cout << "\t" << map_it->second.pins2[index] << endl;
     }
     cout << "\nInner Netlist: \n"
-     << "amount: " << inner_netlist.size() << endl;
-    for (size_t i = 0; i < inner_netlist.size(); i++)
+     << "Amount: " << internal_netlist.size() << endl;
+    count = 1;
+    for (map<string, relationship>::const_iterator map_it = internal_netlist.begin(); map_it != internal_netlist.end(); map_it++, count++)
     {
-        cout << setw(4) << i + 1 << " " << setw(10) << inner_netlist[i].relation_name << ": ";
-        for (size_t j = 0; j < inner_netlist[i].dice_pads1_index.second.size(); j++)
-            cout << "\n\t" << dice[inner_netlist[i].dice_pads1_index.first - 1].get_Pad_Name(inner_netlist[i].dice_pads1_index.second[j]);
-        cout << "\n\t-->\n";
-        for (size_t j = 0; j < inner_netlist[i].dice_pads2_index.second.size(); j++)
-            cout << "\t" << dice[inner_netlist[i].dice_pads2_index.first - 1].get_Pad_Name(inner_netlist[i].dice_pads2_index.second[j]) << endl;
+        cout << setw(4) << count << " " << setw(10) << map_it->first << ": ";
+        for (size_t index = 0; index < map_it->second.pins1.size(); index++)
+            cout << "\n\t" << map_it->second.pins1[index];
+        cout << "\n\t↓\n";
+        for (size_t index = 0; index < map_it->second.pins2.size(); index++)
+            cout << "\t" << map_it->second.pins2[index] << endl;
     }
-    cout << "----------Netlist content----------\n";
+    cout << "----------Netlist Content----------\n";
     return;
 }
 
-size_t Chip::get_Die_Index(std::string str) const
+// get all number of the ball
+vector<string> Chip::get_Balls_Number() const
 {
-    for (size_t i = 0; i < dice.size(); i++) {
-        for (size_t j = 0; j < dice[i].get_Pad_Amount(); j++) {
-            if (dice[i].get_Pad_Index(str) != -1UL) return i;
-        }
-    }
-    return -1UL;
+    vector<string> return_vector;
+    return_vector.clear();
+    for (map<string, Ball>::const_iterator ball_it = balls.begin(); ball_it != balls.end(); ball_it++)
+        return_vector.push_back(ball_it->first);
+    return return_vector;
 }
 
-// Will be rewrite
-size_t Chip::get_Netlist_Index(string str) const
+// get all name of the ball
+map<string, string> Chip::get_Balls_Name() const
 {
-    for (size_t t = 0; t <= outer_netlist.size(); t++)
-        if (outer_netlist[t].relation_name == str)
-            return t;
-    return -1UL;
+    map<string, string> return_map;
+    return_map.clear();
+    for (map<string, Ball>::const_iterator ball_it = balls.begin(); ball_it != balls.end(); ball_it++)
+        return_map[ball_it->first] = ball_it->second.get_Name();
+    return return_map;
+}
+
+// get all location of the ball
+map<string, Cartesian> Chip::get_Balls_Location() const
+{
+    map<string, Cartesian> return_map;
+    return_map.clear();
+    for (map<string, Ball>::const_iterator ball_it = balls.begin(); ball_it != balls.end(); ball_it++)
+        return_map[ball_it->first] = ball_it->second.get_Location();
+    return return_map;
+}
+
+// get location of some balls
+vector<Cartesian> Chip::get_Some_Balls_Location(vector<string> balls_number)
+{
+    vector<Cartesian> return_vector;
+    return_vector.clear();
+    for (size_t i = 0; i < balls_number.size(); i++)
+        return_vector.push_back(get_Ball_Location(balls_number[i]));
+    return return_vector;
+}
+
+// get location of the pad
+Cartesian Chip::get_Die_Pad_Location(std::string par_number) const
+{
+    for (size_t die_index = 0; die_index < dice.size(); die_index++)
+    {
+        map<string, Cartesian> pads = dice[die_index].get_Pads_Location();
+        if (pads.find(par_number) != pads.end()) return pads[par_number];
+    }
+    cout << "Warning: can not find " << par_number << " in all of the dice pads\n";
+    return Cartesian(0.0, 0.0);
+}
+
+// get rotation of the pad
+double Chip::get_Die_Pad_Rotation(std::string par_number) const
+{
+    for (size_t die_index = 0; die_index < dice.size(); die_index++)
+    {
+        map<string, double> pads = dice[die_index].get_Pads_Rotation();
+        if (pads.find(par_number) != pads.end()) return pads[par_number];
+    }
+    cout << "Warning: can not find " << par_number << " in all of the dice pads\n";
+    return 0.0;
+}
+
+// get radian of the pad
+double Chip::get_Die_Pad_Radian(std::string par_number)
+{
+    for (size_t die_index = 0; die_index < dice.size(); die_index++)
+    {
+        map<string, double> pads = dice[die_index].get_Pads_Rotation();
+        if (pads.find(par_number) != pads.end()) return pads[par_number];
+    }
+    cout << "Warning: can not find " << par_number << " in all of the dice pads\n";
+    return 0.0;
+}
+
+// get location of some pads
+vector<Cartesian> Chip::get_Pads_Location(vector<string> pads_number) const
+{
+    vector<Cartesian> return_vector;
+    return_vector.clear();
+    for (size_t i = 0; i < pads_number.size(); i++)
+        return_vector.push_back(get_Die_Pad_Location(pads_number[i]));
+    return return_vector;
 }
 
 // Output .lp file for Gurobi
 void Chip::output_LP_File(ofstream& fout)
 {
-    cout << "Notice: can not use multi_io!!!\n";
+    cout << "Notice: can not use in current version!!!\n";
     // Minimize
-    if (min_output)
+    /*if (min_output)
     {
         fout << "Minimize\n";
-        for (size_t i = 0; i < outer_netlist.size(); i++) {
+        for (size_t i = 0; i < external_netlist.size(); i++) {
             if (i == 0) fout << "  a0x + a0y";
             else {
                 fout << " + a" << i << "x + a" << i << "y";
@@ -297,8 +290,8 @@ void Chip::output_LP_File(ofstream& fout)
 
    // Subject To
     fout << "Subject To\n";
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
-        double radius = outer_netlist[i].pad_pol.radius;
+    for (size_t i = 0; i < external_netlist.size(); i++) {
+        double radius = external_netlist[i].pad_pol.radius;
         if (i == 0) fout << "  goal: " << radius << " s0p - " << radius << " c0p";
         else {
             fout << " + " << radius << " s" << i << "p - " << radius << " c" << i << "p";
@@ -309,7 +302,7 @@ void Chip::output_LP_File(ofstream& fout)
     // Bounds
     fout << "Bounds\n";
     fout << "  0 <= alpha <= " << 2 * M_PI << "\n";
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
+    for (size_t i = 0; i < external_netlist.size(); i++) {
         fout << " \\net" << i << "\n"
                  << "  n" << i << "d free\n" 
                  << "  n" << i << "s free\n" 
@@ -323,34 +316,34 @@ void Chip::output_LP_File(ofstream& fout)
 
     // General Constraint
     vector<Cartesian> ball_pos;
-    ball_pos = balls.get_All_Position();
+    ball_pos = balls.get_All_Location();
     fout << "General Constraint\n";
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
+    for (size_t i = 0; i < external_netlist.size(); i++) {
         fout << "\\net" << i << "\n";
         fout << " \\basic equation\n";
-        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << outer_netlist[i].pad_pol.angle << " )\n" 
+        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << external_netlist[i].pad_pol.angle << " )\n" 
                  << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
                  << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
-                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( outer_netlist[i].ball_car.x - dice[0].get_Center().x ) << " n" << i << "s )\n"
-                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( outer_netlist[i].ball_car.y - dice[0].get_Center().y ) << " n" << i << "c )\n";
+                 << "  sin" << i << ": s" << i << "p = POLY ( "  << ( external_netlist[i].ball_car.x - dice[0].get_Center().x ) << " n" << i << "s )\n"
+                 << "  cos" << i << ": c" << i << "p = POLY ( " << ( external_netlist[i].ball_car.y - dice[0].get_Center().y ) << " n" << i << "c )\n";
         if (min_output)
         {
             fout << " \\minimize equation\n";
-            fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << outer_netlist[i].pad_pol.radius 
-                 << " n" << i << "c + " << outer_netlist[i].ball_car.x - dice[0].get_Center().x << " )\n"
-                 << "  miner" << i << "y: m" << i << "y = POLY ( -" << outer_netlist[i].pad_pol.radius
-                 << " n" << i << "s + " << outer_netlist[i].ball_car.y - dice[0].get_Center().y << " )\n";
+            fout << "  miner" << i << "x: m" << i << "x = POLY ( -" << external_netlist[i].pad_pol.radius 
+                 << " n" << i << "c + " << external_netlist[i].ball_car.x - dice[0].get_Center().x << " )\n"
+                 << "  miner" << i << "y: m" << i << "y = POLY ( -" << external_netlist[i].pad_pol.radius
+                 << " n" << i << "s + " << external_netlist[i].ball_car.y - dice[0].get_Center().y << " )\n";
             fout << " \\absolute value\n"
                      << "  abs" << i << "x: a" << i << "x = ABS ( m" << i << "x )\n" 
                      << "  abs" << i << "y: a" << i << "y = ABS ( m" << i << "y )\n";
         }
-    }
+    }*/
 
     /*// Minimize
     if (min_output)
     {
         fout << "Minimize\n";
-        for (size_t i = 0; i < outer_netlist.size(); i++) {
+        for (size_t i = 0; i < external_netlist.size(); i++) {
             if (i == 0) fout << "  ";
             else fout << " + ";
             fout << "a" << i << "x + a" << i << "y";
@@ -366,9 +359,9 @@ void Chip::output_LP_File(ofstream& fout)
     vector<vector<Polar>> dice_pads;
     dice_pads.resize(dice.size());
     for (size_t i = 0; i < dice.size() && i < dice_pads.size(); i++)
-        dice_pads[i] = dice[i].get_Pads_Pol_Position();
+        dice_pads[i] = dice[i].get_Pads_Pol_Location();
     fout << "Bounds\n";
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
+    for (size_t i = 0; i < external_netlist.size(); i++) {
         fout << " \\net" << i << "\n"
                  << "  n" << i << "d free\n"
                  << "  n" << i << "s free\n"
@@ -381,24 +374,24 @@ void Chip::output_LP_File(ofstream& fout)
 
     // General Constraint
     vector<Cartesian> ball_pos;
-    ball_pos = balls.get_All_Position();
+    ball_pos = balls.get_All_Location();
     fout << "General Constraint\n";
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
+    for (size_t i = 0; i < external_netlist.size(); i++) {
         fout << "\\net" << i << "\n";
         fout << " \\basic equation\n";
-        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << outer_netlist[i].pad_pol.angle << " )\n"
+        fout << "  net" << i << "degree: n" << i << "d = POLY ( 1 alpha + " << external_netlist[i].pad_pol.angle << " )\n"
                  << "  net" << i << "sin: n" << i << "s = SIN ( n" << i << "d )\n"
                  << "  net" << i << "cos: n" << i << "c = COS ( n" << i << "d )\n"
-                 << "  net" << i << "x: n" << i << "x = POLY ( -" << outer_netlist[i].pad_pol.radius << " n" << i << "c + "
-                 << outer_netlist[i].ball_car.x - dice[outer_netlist[i].dice_pads_index[0].first - 1].get_Center().x << " )\n"
-                 << "  net" << i << "y: n" << i << "y = POLY ( -" << outer_netlist[i].pad_pol.radius << " n" << i << "s + "
-                 << outer_netlist[i].ball_car.y - dice[outer_netlist[i].dice_pads_index[0].first - 1].get_Center().y << " )\n"
+                 << "  net" << i << "x: n" << i << "x = POLY ( -" << external_netlist[i].pad_pol.radius << " n" << i << "c + "
+                 << external_netlist[i].ball_car.x - dice[external_netlist[i].dice_pads_index[0].first - 1].get_Center().x << " )\n"
+                 << "  net" << i << "y: n" << i << "y = POLY ( -" << external_netlist[i].pad_pol.radius << " n" << i << "s + "
+                 << external_netlist[i].ball_car.y - dice[external_netlist[i].dice_pads_index[0].first - 1].get_Center().y << " )\n"
                  << "  abs" << i << "x: a" << i << "x = ABS ( n" << i << "x )\n"
                  << "  abs" << i << "x: a" << i << "y = ABS ( n" << i << "y )\n";
     }*/
 
     // End
-    fout << "End";
+    /*fout << "End";*/
     return;
 }
 
@@ -411,38 +404,48 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
     size_t found = fun_name.rfind('.');    // get dot position
     fun_name.erase(fun_name.begin() + found, fun_name.end());   // get file name(no .m)
     fout << "function f = " << fun_name << "(x)\n\tf = ";
-    for (size_t i = 0; i < outer_netlist.size(); i++)   // output outer relationship
+    // output outer relationship
+    for (map<string, relationship>::const_iterator map_it = external_netlist.begin(); map_it != external_netlist.end(); map_it++)
     {
-        // get x index for MATLAB variable
-        size_t main_die_number = 0, temp_amount = 0;
-        for (size_t j = 0; j < outer_netlist[i].dice_pads_index.size(); j++) {
-            if (outer_netlist[i].dice_pads_index[j].size() > temp_amount) {
-                main_die_number = j + 1;
-                temp_amount = outer_netlist[i].dice_pads_index[j].size();
-            }
-        }
+        assert(map_it->second.pins1_number == 0);    // assert pins2 are ball(s).
 
-        if (i != 0) fout << " + ";
-        fout << "(" << outer_netlist[i].ball_car.x << "-x(" << main_die_number << ")-"
-                 << outer_netlist[i].pad_pol.radius << "*cos(" << outer_netlist[i].pad_pol.angle << "+x(" << 2 * dice.size() + main_die_number << "))).^2 + "
-                 << "(" << outer_netlist[i].ball_car.y << "-x(" << dice.size() + main_die_number << ")-"
-                 << outer_netlist[i].pad_pol.radius << "*sin(" << outer_netlist[i].pad_pol.angle << "+x(" << 2 * dice.size() + main_die_number << "))).^2";
+        // get data that will be output
+        int die_number = map_it->second.pins2_number;
+        Cartesian ball_cart = CG(get_Some_Balls_Location(map_it->second.pins1));
+        Polar pads_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)));
+
+        if (map_it != external_netlist.begin()) fout << " + ";
+        fout << "(x(" << (die_number - 1) * 3 + 1 << ")+"
+                 << pads_pol.radius << "*cos(" << pads_pol.angle << "+x(" << (die_number - 1) * 3 + 3 << "))-"
+                 << ball_cart.x << ")^2 + "
+                 << "(x(" << (die_number - 1) * 3 + 2 << ")+"
+                 << pads_pol.radius << "*sin(" << pads_pol.angle << "+x(" << (die_number - 1) * 3 + 3 << "))-"
+                 << ball_cart.y << ")^2 + ";
     }
-    for (size_t i = 0; i < inner_netlist.size(); i++)   // output inner relationship
+    // output inner relationship
+    for (map<string, relationship>::const_iterator map_it = internal_netlist.begin(); map_it != internal_netlist.end(); map_it++)
     {
-        fout << " + (x("
-                 << inner_netlist[i].dice_pads1_index.first << ")+" << inner_netlist[i].pad1_pol.radius << "*cos(" << inner_netlist[i].pad1_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads1_index.first << "))-x("
-                 << inner_netlist[i].dice_pads2_index.first << ")-" << inner_netlist[i].pad2_pol.radius << "*cos(" << inner_netlist[i].pad2_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads2_index.first << "))).^2 + (x("
-                 << dice.size() + inner_netlist[i].dice_pads1_index.first << ")+" << inner_netlist[i].pad1_pol.radius << "*sin(" << inner_netlist[i].pad1_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads1_index.first << "))-x("
-                 << dice.size() + inner_netlist[i].dice_pads2_index.first << ")-" << inner_netlist[i].pad2_pol.radius << "*sin(" << inner_netlist[i].pad2_pol.angle << "+x(" << 2 * dice.size() + inner_netlist[i].dice_pads2_index.first << "))).^2";
+        // get data that will be output
+        int die_number1 = map_it->second.pins1_number, die_number2 = map_it->second.pins2_number;
+        Polar pads1_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins1))), 
+                    pads2_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)));
+
+        fout << " + (x(" << (die_number1 - 1) * 3 + 1 << ")+"
+                 << pads1_pol.radius << "*cos(" << pads1_pol.angle << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
+                 << "-x(" << (die_number2 - 1) * 3 + 1 << ")-"
+                 << pads2_pol.radius << "*cos(" << pads2_pol.angle << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2"
+                 << " + (x(" << (die_number1 - 1) * 3 + 2 << ")+"
+                 << pads1_pol.radius << "*sin(" << pads1_pol.angle << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
+                 << "-x(" << (die_number2 - 1) * 3 + 2 << ")-"
+                 << pads2_pol.radius << "*sin(" << pads2_pol.angle << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2";
     }
     fout << ";";
     return;
 }
 
-void Chip::Original_Dice_Pads()
+/*void Chip::Original_Dice_Pads()
 {
     for (size_t i = 0; i < dice.size(); i++)
-        dice[i].Original_Position();
+        dice[i].Original_Location();
     return;
-}
+}*/

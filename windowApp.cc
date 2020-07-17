@@ -309,7 +309,7 @@ static gboolean checkButton_toggled(GtkToggleButton *toggleButton, gpointer user
             }
         }
     }
-
+    
     gtk_widget_queue_draw(GTK_WIDGET(user_data));
     return TRUE;
 }

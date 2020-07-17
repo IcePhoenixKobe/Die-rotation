@@ -55,7 +55,7 @@ void parse_Drc(std::ifstream& fin)
     }
 
 	fin.close();
-    cout << "parse drc done\n";
+    cout << "parse drc DONE\n";
     return;
 }
 
@@ -71,10 +71,10 @@ void parse_PIN(ifstream& fin)
     Cartesian pin_cartesian(0.0, 0.0);
     stringstream str_stream;    // string stream of each line of file
 	vector<string> balls_name;
-	vector<Cartesian> balls_cartesian;  // all BGA balls position
+	vector<Cartesian> balls_cartesian;  // all BGA balls location
 	vector<Cartesian> dice_center;  // all dice center
 	vector<vector<string>> dice_pads_name;       // all pads name
-	vector<vector<Cartesian>> dice_pads_cartesian;    // all pads position
+	vector<vector<Cartesian>> dice_pads_cartesian;    // all pads location
     vector<vector<double>> dice_pads_rotation;
     
     str.clear();
@@ -125,8 +125,8 @@ void parse_PIN(ifstream& fin)
             }
         }
         
-		// second: get position of die pad or BGA ball
-		if (temp_str.find("location-xy:") != string::npos) // if found position of pad or ball
+		// second: get location of die pad or BGA ball
+		if (temp_str.find("location-xy:") != string::npos) // if found location of pad or ball
 		{
 			str_stream >> temp_str;  // x coordinate(e.g. "(0.00")
 			temp_str.erase(0, 1);    // clean left quote
@@ -147,13 +147,13 @@ void parse_PIN(ifstream& fin)
                 rotation = rotation * M_PI / 180;
 
                 // set data
-                if (isBall && !isDie)   // ball position
+                if (isBall && !isDie)   // ball location
                 {
                     balls_name.push_back(pin_name);
                     balls_cartesian.push_back(pin_cartesian);
                     isBall = false;
                 }
-                else if (isDie && !isBall)  // die pad position
+                else if (isDie && !isBall)  // die pad location
                 {
                     if (die_number <= dice_amount)  // direct assign
                     {
@@ -216,7 +216,7 @@ void parse_PIN(ifstream& fin)
     assert(balls_name.size() == balls_cartesian.size());
     chip->set_Balls_Amount(balls_name.size());
     chip->set_Balls_Name(balls_name);
-    chip->set_Balls_Position(balls_cartesian);
+    chip->set_Balls_Location(balls_cartesian);
 
     chip->set_Dice_Amount(dice_amount);
     assert(dice_center.size() == dice_amount);
@@ -287,10 +287,8 @@ void parse_PIN(ifstream& fin)
         chip->set_Die_Pads(i, dice_pads_name[i], dice_pads_cartesian[i], dice_pads_rotation[i]);
     }
 
-    
-
-	fin.close();
-    cout << "parse pin done\n";
+    fin.close();
+    cout << "parse pin DONE\n";
     return;
 }
 
@@ -300,13 +298,13 @@ void parse_Netlist(ifstream& fin)
     string str, str_temp;   // str_temp: get multi line netlist and combine into str
     vector<string> BGAs;
     vector<string> DIEs;
-    vector<InnerRelationship> inner_netlist;
-    vector<OuterRelationship> outer_netlist;
+    vector<InnerRelationship> internal_netlist;
+    vector<OuterRelationship> external_netlist;
 
     str.clear();
     str_temp.clear();
-    inner_netlist.clear();
-    outer_netlist.clear();
+    internal_netlist.clear();
+    external_netlist.clear();
 
     // Try to find "$NET"
     do getline(fin, str_temp); while (str_temp.find("$NETS") == string::npos && !fin.eof());
@@ -331,7 +329,7 @@ void parse_Netlist(ifstream& fin)
 
                 str += str_temp;
                 ss << str;
-                ss >> netlist_name;  // get outer_netlist name
+                ss >> netlist_name;  // get external_netlist name
 
                 if (ignore_Power_Ground(netlist_name))
                 {}
@@ -341,7 +339,7 @@ void parse_Netlist(ifstream& fin)
                     string sub_str;
                     sub_str.clear();
                     
-                    rela_s.relation_name = netlist_name;    // set relation_name
+                    rela_s.name = netlist_name;    // set name
                     ss >> sub_str;  // get ";"
                     if (sub_str.find(";") != string::npos)
                     {
@@ -375,7 +373,7 @@ void parse_Netlist(ifstream& fin)
                             }
                             else
                             {
-                                cars.push_back(chip->get_Ball_Position(index));
+                                cars.push_back(chip->get_Ball_Location(index));
                                 balls_index.push_back(index);
                             }
                         }
@@ -407,7 +405,7 @@ void parse_Netlist(ifstream& fin)
                             }
                             else
                             {
-                                cars.push_back(chip->get_Die_Pad_Position(index.first - 1, index.second));
+                                cars.push_back(chip->get_Die_Pad_Location(index.first - 1, index.second));
                                 dice_pads_index[index.first - 1].push_back(index.second);
                             }
 
@@ -415,7 +413,7 @@ void parse_Netlist(ifstream& fin)
                             rela_s.dice_pads_index = dice_pads_index;
                             rela_s.pad_car = CG(cars);
                         }
-                        outer_netlist.push_back(rela_s);
+                        external_netlist.push_back(rela_s);
                     }
                     else
                     {
@@ -520,7 +518,7 @@ void parse_Netlist(ifstream& fin)
                     balls_index.clear();
 
                     rela_s_O = OuterRelationship();
-                    rela_s_O.relation_name = netlist_name;  // set relation_name
+                    rela_s_O.name = netlist_name;  // set name
                     for (size_t i = 0; i < BGAs.size(); i++)
                     {
                         size_t index = chip->get_Ball_Index(BGAs[i]);   // set ball_index
@@ -531,7 +529,7 @@ void parse_Netlist(ifstream& fin)
                         }
                         else
                         {
-                            cars.push_back(chip->get_Ball_Position(index));
+                            cars.push_back(chip->get_Ball_Location(index));
                             balls_index.push_back(index);
                         }
                     }
@@ -560,7 +558,7 @@ void parse_Netlist(ifstream& fin)
                         }
                         else
                         {
-                            cars.push_back(chip->get_Die_Pad_Position(index.first - 1, index.second));
+                            cars.push_back(chip->get_Die_Pad_Location(index.first - 1, index.second));
                             dice_pads_index[index.first - 1].push_back(index.second);
                         }
                     }
@@ -568,9 +566,9 @@ void parse_Netlist(ifstream& fin)
                     rela_s_O.pad_car = CG(cars);
                     
                     // insert relationship into outer netlist
-                    outer_netlist.push_back(rela_s_O);
+                    external_netlist.push_back(rela_s_O);
                 }
-                /*else if (DIEs.size() >= 2)  // die pads to die pads
+                else if (DIEs.size() >= 2)  // die pads to die pads
                 {
                     //cout << "kind of dice number: " << die_number.size() << endl;
                     if (die_number.size() == 2) // Can not handle three or more dice's relationship
@@ -588,7 +586,7 @@ void parse_Netlist(ifstream& fin)
                         pads2.second.clear();
 
                         rela_s_I = InnerRelationship();
-                        rela_s_I.relation_name = netlist_name;  // set relation_name
+                        rela_s_I.name = netlist_name;  // set name
                         for (size_t i = 0; i < DIEs.size(); i++)
                         {
                             size_t die_index = -1UL, pad_index = -1UL;
@@ -599,13 +597,13 @@ void parse_Netlist(ifstream& fin)
                             if (pads1.first == 0 || pads1.first == die_index)
                             {
                                 pads1.first = die_index;
-                                cars1.push_back(chip->get_Die_Pad_Position(die_index - 1, pad_index));
+                                cars1.push_back(chip->get_Die_Pad_Location(die_index - 1, pad_index));
                                 pads1_index.push_back(pad_index);
                             }
                             else if (pads2.first == 0 || pads2.first == die_index)
                             {
                                 pads2.first = die_index;
-                                cars2.push_back(chip->get_Die_Pad_Position(die_index - 1, pad_index));
+                                cars2.push_back(chip->get_Die_Pad_Location(die_index - 1, pad_index));
                                 pads2_index.push_back(pad_index);
                             }
                             else
@@ -625,32 +623,32 @@ void parse_Netlist(ifstream& fin)
                             rela_s_I.pad2_car = CG(cars2);
 
                             // insert relationship into netlist
-                            inner_netlist.push_back(rela_s_I);
+                            internal_netlist.push_back(rela_s_I);
                         }
                     }
-                }*/
+                }
                 isNet = false;
             }
         }
     }
 
     // Cartesian convert to Polar (Outer Relationship)
-    for (size_t i = 0; i < outer_netlist.size(); i++) {
-        outer_netlist[i].pad_pol = convert_cart_to_polar(outer_netlist[i].pad_car);
+    for (size_t i = 0; i < external_netlist.size(); i++) {
+        external_netlist[i].pad_pol = convert_cart_to_polar(external_netlist[i].pad_car);
     }
 
     // Cartesian convert to Polar (Inner Relationship)
-    for (size_t i = 0; i < inner_netlist.size(); i++) {
-        inner_netlist[i].pad1_pol = convert_cart_to_polar(inner_netlist[i].pad1_car);
-        inner_netlist[i].pad2_pol = convert_cart_to_polar(inner_netlist[i].pad2_car);
+    for (size_t i = 0; i < internal_netlist.size(); i++) {
+        internal_netlist[i].pad1_pol = convert_cart_to_polar(internal_netlist[i].pad1_car);
+        internal_netlist[i].pad2_pol = convert_cart_to_polar(internal_netlist[i].pad2_car);
     }
 
     // final assign
-    chip->set_All_O_Netlist(outer_netlist);
-    chip->set_All_I_Netlist(inner_netlist);
+    chip->set_All_E_Netlist(external_netlist);
+    chip->set_All_I_Netlist(internal_netlist);
 
     fin.close();
-    cout << "parse netlist done\n";
+    cout << "parse netlist DONE\n";
     return;
 }
 

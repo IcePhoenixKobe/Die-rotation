@@ -9,91 +9,90 @@ extern bool min_output;
 class Ball
 {
 private:
-    std::size_t amount;
-    std::vector<std::string> name;
-    std::vector<Cartesian> position;
+    item ball;
 public:
     // default constructor
-    Ball();
+    Ball() { ball = item(); }
     // constructor
-    Ball(std::size_t);
-    // constructor
-    Ball(std::vector<std::string> par_name, std::vector<Cartesian> par_pos) : name(par_name), position(par_pos) {
-        assert(par_name.size() == par_pos.size());
-        amount = par_name.size();
-    }
+    Ball(item par_ball) : ball(par_ball) {}
     // copy constructor
-    Ball(const Ball& me) : amount(me.amount), name(me.name), position(me.position) {}
+    Ball(const Ball& me) : ball(me.ball) {}
     // destructor
     ~Ball() {}
 
     // Get function
-    size_t get_Amount() const { return amount; }
-    std::vector<std::string> get_All_Name() const { return name; }
-    std::vector<Cartesian> get_All_Position() const { return position; }
-    size_t get_Ball_Index(std::string str) const;
-    std::string get_Name(size_t index) const { return name[index]; }
-    Cartesian get_Position(size_t index) const { return position[index]; }
+    std::string get_Name() const { return ball.name; }
+    Cartesian get_Location() const { return ball.xy; }
+    double get_Rotation() const { return ball.rotation; }
+    // Get BGA ball radian of rotation
+    double get_Radian() { return ball.getRadian(); }
 
     // Set function
-    void set_Amount(size_t par_amount) { amount = par_amount; }
-    void set_All_Name(std::vector<std::string> par_name) { name = par_name; }
-    void set_All_Pos(std::vector<Cartesian> pos) { position = pos; }
+    void set_item(item par_item) { ball = par_item; }
+    void set_name(std::string par_name) { ball.name = par_name; }
+    void set_Location(Cartesian par_pos) { ball.xy = par_pos; }
+    void set_Angle(double par_angle) { ball.rotation = par_angle; }
 };
 
 class Die
 {
 private:
-    std::size_t amount;
+    double width;
+    double height;
     Cartesian center;
-    std::vector<std::string> name;
-    std::vector<std::pair<Cartesian, Polar>> position;
-    std::vector<double> rotation;
-
-    void Clear_Pad();
-    void Resize_Pad(size_t);
+    std::map<std::string, item> pads;
 public:
     // default constructor
-    Die() : amount(0), center(Cartesian(0.0, 0.0)) { Clear_Pad(); }
-    // constructor with pad amount
-    Die(std::size_t);
+    Die() : width(0.0), height(0.0), center(Cartesian(0.0, 0.0)) { pads.clear(); }
     // constructor with die center
-    Die(Cartesian xy) : center(xy) { Clear_Pad(); }
-    // constructor with pad amount and die center
-    Die(std::size_t, Cartesian);
+    Die(Cartesian xy) : width(0.0), height(0.0), center(xy) { pads.clear(); }
+    // constructor with die width and height
+    Die(double par_width, double par_height) : width(par_width), height(par_height), center(Cartesian(0.0, 0.0)) { pads.clear(); }
+    // constructor with die width, height and center
+    Die(double par_width, double par_height, Cartesian xy) : width(par_width), height(par_height), center(xy) { pads.clear(); }
     // copy constructor
-    Die(const Die& me) : amount(me.amount), center(me.center), name(me.name), position(me.position), rotation(me.rotation) {}
+    Die(const Die& me) : width(me.width), height(me.height), center(me.center), pads(me.pads) {}
     // destructor
     ~Die() {}
 
     // Get function
-    size_t get_Pad_Amount() const { return amount; }
+    double get_Width() const { return width; }
+    double get_Height() const { return height; }
     Cartesian get_Center() const { return center; }
-    std::vector<std::string> get_Pads_Name() const { return name; }
-    std::vector<std::pair<Cartesian, Polar>> get_Pads_Position() const { return position; }
-    std::vector<double> get_Pads_Rotation() const { return rotation; }
-    // Get individual data
-    size_t get_Pad_Index(std::string str) const;
-    std::string get_Pad_Name(size_t index) const { return name[index]; }
-    Cartesian get_Cart_Position(size_t index) const { return position[index].first; }
-    Polar get_Pol_Position(size_t index) const { return position[index].second; }
-    double get_Pad_Rotation(size_t index) const { return rotation[index]; }
+    size_t get_Pads_Amount() const { return pads.size(); }
+    std::map<std::string, item> get_Pads() const { return pads; }
+    std::vector<std::string> get_Pads_Number() const;
+    std::vector<std::string> get_Pads_Name() const;
+    std::map<std::string, Cartesian> get_Pads_Location() const;
+    std::map<std::string, double> get_Pads_Rotation() const;
+    std::map<std::string, double> get_Pads_Radian();
+    // Get individual pad data
+    std::string get_Name(std::string str) { return pads[str].name; }
+    Cartesian get_Pad_Cart_Location(std::string str) { return pads[str].xy; }
+    Polar get_Pad_Pol_Location(std::string str) { return convert_cart_to_polar(pads[str].xy); }
+    double get_Pad_Rotation(std::string str) { return pads[str].rotation; }
+    double get_Pad_Radian(std::string str) { return pads[str].getRadian(); }
 
     // Set function
-    void set_Amount(size_t par_amount) { amount = par_amount; }
+    void set_WH(double par_width, double par_height) { width = par_width; height = par_height; }
     void set_Center(Cartesian xy) { center = xy; }
-    void set_Pads(std::vector<std::string>, std::vector<Cartesian>, std::vector<double>);
+    void set_Pad(std::string pad_name, item par_pad) { pads[pad_name] = par_pad; }
+    void set_Pads(std::map<std::string, item> par_pads) { pads = par_pads; }
+    void set_Pad_Name(std::string par_number, std::string par_name) { pads[par_number].name = par_name; }
+    void set_Pad_Location(std::string par_number, Cartesian par_xy) { pads[par_number].xy = par_xy; }
+    void set_Pad_Rotation(std::string par_number, double par_rota) { pads[par_number].rotation = par_rota; }
 
-    void Original_Position();
+    // Other function
+    //void Original_Location();
 };
 
 class Chip
 {
 private:
-    Ball balls;
+    std::map<std::string, Ball> balls;
     std::vector<Die> dice;
-    std::vector<InnerRelationship> inner_netlist;
-    std::vector<OuterRelationship> outer_netlist;
+    std::map<std::string, relationship> internal_netlist;
+    std::map<std::string, relationship> external_netlist;
 public:
     infomation drc;
 
@@ -109,33 +108,35 @@ public:
 
     // Get function
     // get ball's information
-    size_t get_Ball_Amount() const { return balls.get_Amount(); }
-    std::vector<std::string> get_Balls_Name() const { return balls.get_All_Name(); }
-    std::vector<Cartesian> get_Balls_Position() const { return balls.get_All_Position(); }
-    size_t get_Ball_Index(std::string str) const { return balls.get_Ball_Index(str); }
-    std::string get_Ball_Name(size_t index) const { return balls.get_Name(index); }
-    Cartesian get_Ball_Position(size_t index) const { return balls.get_Position(index); }
+    size_t get_Balls_Amount() const { return balls.size(); }
+    std::vector<std::string> get_Balls_Number() const;
+    std::map<std::string, std::string> get_Balls_Name() const;
+    std::map<std::string, Cartesian> get_Balls_Location() const;
+    //
+    std::string get_Ball_Name(std::string par_number) { return balls[par_number].get_Name(); }
+    Cartesian get_Ball_Location(std::string par_number) { return balls[par_number].get_Location(); }
+    // additional get function
+    std::vector<Cartesian> get_Some_Balls_Location(std::vector<std::string>);
     // get dice's information
     std::vector<Die> get_Dice() const { return dice; }
     size_t get_Dice_Amount() const { return dice.size(); }
-    size_t get_Die_Index(std::string) const;
-    size_t get_Die_Pad_Amount(size_t index) const { return dice[index].get_Pad_Amount(); }
-    Cartesian get_Die_Center(size_t index) const { return dice[index].get_Center(); }
-    size_t get_Die_Pad_Index(size_t index, std::string str) const { return dice[index].get_Pad_Index(str); }
-    Cartesian get_Die_Pad_Position(size_t die_index, size_t pad_index) const { return dice[die_index].get_Cart_Position(pad_index); }
-    double get_Die_Pad_Rotation(size_t die_index, std::string str) const { return dice[die_index].get_Pad_Rotation(dice[die_index].get_Pad_Index(str)); }
+    //
     Die get_Die(size_t index) const { return dice[index]; }
+    size_t get_Die_Pad_Amount(size_t index) const { return dice[index].get_Pads_Amount(); }
+    Cartesian get_Die_Center(size_t index) const { return dice[index].get_Center(); }
+    Cartesian get_Die_Pad_Location(std::string par_number) const;
+    double get_Die_Pad_Rotation(std::string par_number) const;
+    double get_Die_Pad_Radian(std::string par_number);
+    // additional get function
+    std::vector<Cartesian> get_Pads_Location(std::vector<std::string>) const;
     // get netlist information
-    size_t get_Netlist_Index(std::string) const;
-    std::vector<InnerRelationship> get_All_I_Netlist() const { return inner_netlist; }
-    std::vector<OuterRelationship> get_All_O_Netlist() const { return outer_netlist; }
+    std::map<std::string, relationship> get_All_I_Netlist() const { return internal_netlist; }
+    std::map<std::string, relationship> get_All_O_Netlist() const { return external_netlist; }
     /*====================*/
 
     // Set function
     // set the data of ball
-    void set_Balls_Amount(size_t par_amount) { balls.set_Amount(par_amount); }
-    void set_Balls_Name(std::vector<std::string> par_name) { balls.set_All_Name(par_name); }
-    void set_Balls_Position(std::vector<Cartesian> pos) { balls.set_All_Pos(pos); }
+    void insert_Ball(std::string par_ball_number, Ball par_ball) { balls[par_ball_number] = par_ball; }
     // set the data of dice
     void set_Dice_Amount(size_t par_amount) {
         dice.clear();
@@ -143,29 +144,32 @@ public:
             dice.push_back(Die());
         }
     }
-    void set_Die_Amount(size_t index, size_t par_amount) {
+    void set_Die_Width_Height(size_t index, double par_width, double par_height) {
         assert(index < dice.size());
-        dice[index].set_Amount(par_amount);
+        dice[index].set_WH(par_width, par_height);
     }
     void set_Die_Center(size_t index, Cartesian par_pos) {
         assert(index < dice.size());
         dice[index].set_Center(par_pos);
     }
-    void set_Die_Amount_Center(size_t index, size_t par_amount, Cartesian par_center) {
+    void set_Die_Width_Height_Center(size_t index, double par_width, double par_height, Cartesian par_center) {
         assert(index < dice.size());
-        dice[index] = Die(par_amount, par_center);
+        dice[index] = Die(par_width, par_height, par_center);
     }
-    void set_Die_Pads(size_t index, std::vector<std::string> par_names, std::vector<Cartesian> par_poss, std::vector<double> par_rotas) { dice[index].set_Pads(par_names, par_poss, par_rotas); }
+    void insert_Die_Pad(size_t index, std::string par_name, item par_pad) { dice[index].set_Pad(par_name, par_pad); }
     // set the data of netlist
-    void set_All_I_Netlist(std::vector<InnerRelationship> par_inner_rela) { inner_netlist = par_inner_rela; }
-    void set_All_O_Netlist(std::vector<OuterRelationship> par_outer_rela) { outer_netlist = par_outer_rela; }
+    void set_All_I_Netlist(std::map<std::string, relationship> par_inner_relations) { internal_netlist = par_inner_relations; }
+    void set_All_E_Netlist(std::map<std::string, relationship> par_outer_relations) { external_netlist = par_outer_relations; }
+    void insert_Internal_Net(std::string par_name, relationship par_relation) { internal_netlist[par_name] = par_relation; }
+    void insert_External_Net(std::string par_name, relationship par_relation) { external_netlist[par_name] = par_relation; }
     /*====================*/
     
     // file output
     void output_LP_File(std::ofstream&);
     void output_M_File(std::ofstream&, char*);
+    /*====================*/
 
-    void Original_Dice_Pads();
+    //void Original_Dice_Pads();
 };
 
 #endif  // CHIP_H

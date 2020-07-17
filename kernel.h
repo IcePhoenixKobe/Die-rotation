@@ -33,6 +33,8 @@ typedef struct Polar {
     //constructor
     Polar() : radius(0.0), angle(0.0) {}
     Polar(double par_radius, double par_angle) : radius(par_radius), angle(par_angle) {}
+    // function
+    double get_Radian() { return angle * M_PI / 180.0; }
 } Polar;
 
 // basic information of chip
@@ -51,70 +53,30 @@ typedef struct Info {
     double spacing;
 } infomation;
 
-// Relationship of outer connection
-typedef struct Outer_Relationship {
-	std::string relation_name;
-    std::vector<size_t> balls_index;
-    std::vector<std::vector<size_t>> dice_pads_index;
-    Cartesian ball_car;
-    Cartesian pad_car;
-    Polar pad_pol;
+// Relationship of pins1 and pins2
+typedef struct Relationship {
+    // die number of die pads or 0(BGA balls)
+    size_t pins1_number;
+    // die number of die pads
+    size_t pins2_number;
+    std::vector<std::string> pins1;
+    std::vector<std::string> pins2;
     // constructor
-    Outer_Relationship() : relation_name("unknown"), ball_car(Cartesian(0.0, 0.0)), pad_car(Cartesian(0.0, 0.0)), pad_pol(Polar(0.0, 0.0))
-    {
-        dice_pads_index.clear();
-        balls_index.clear();
-    }
-    Outer_Relationship(std::string name, std::vector<std::vector<size_t>> par_dice_pads_index, std::vector<size_t> par_balls_index, Cartesian par_pad, Cartesian par_ball) : relation_name(name)
-    {
-        dice_pads_index = par_dice_pads_index;
-        balls_index = par_balls_index;
-        ball_car = par_ball;
-        pad_car = par_pad;
-    }
-} OuterRelationship;
-
-// Relationship of inner connection
-typedef struct Inner_Relationship {
-	std::string relation_name;
-    std::pair<unsigned short, std::vector<size_t>> dice_pads1_index;
-    std::pair<unsigned short, std::vector<size_t>> dice_pads2_index;
-    Cartesian pad1_car;
-    Cartesian pad2_car;
-    Polar pad1_pol;
-    Polar pad2_pol;
-    // constructor
-    Inner_Relationship() : relation_name("unknown")
-    {
-        dice_pads1_index.first = 0;
-        dice_pads2_index.first = 0;
-        dice_pads1_index.second.clear();
-        dice_pads2_index.second.clear();
-        pad1_car = Cartesian(0.0, 0.0);
-        pad2_car = Cartesian(0.0, 0.0);
-        pad1_pol = Polar(0.0, 0.0);
-        pad2_pol = Polar(0.0, 0.0);
-    }
-    Inner_Relationship(std::string name, std::pair<unsigned short, std::vector<size_t>> par_pads1_index, std::pair<unsigned short, std::vector<size_t>> par_pads2_index, Cartesian par_pad1, Cartesian par_pad2) : relation_name(name)
-    {
-        dice_pads1_index = par_pads1_index;
-        dice_pads2_index = par_pads2_index;
-        pad1_car = par_pad1;
-        pad2_car = par_pad2;
-    }
-} InnerRelationship;
+    Relationship() : pins1_number(-1UL), pins2_number(-1UL) { pins1.clear(); pins2.clear(); }
+    Relationship(size_t par_number1, size_t par_number2, std::vector<std::string> par_pins1, std::vector<std::string> par_pins2) 
+        : pins1_number(par_number1), pins2_number(par_number2), pins1(par_pins1), pins2(par_pins2) {}
+} relationship;
 
 // set global parameter with input argument
-void check_argument(int, char*[]); 
+void check_argument(int, char*[]);
+// judging whether ignore current netlist
 bool ignore_Power_Ground(std::string);
 // Convert cartesian coordinate system to polar coordinate system
 Polar convert_cart_to_polar(Cartesian);
 // calculate center of gravity by cartesian coordinate system
 Cartesian CG(std::vector<Cartesian>);
 
-/* use to classify padGroup 
- * currently we have four directions for Group
- * */
+/* use to classify padGroup, currently we have four directions for Group */
 enum class Group{
     UP, DOWN, LEFT, RIGHT
 };
@@ -122,9 +84,12 @@ enum class Group{
 typedef struct Item {
 	std::string name;
 	Cartesian xy;
-
-    Item() : name("unknownItem"), xy(Cartesian(0.0, 0.0)) {}
-    Item(std::string str, Cartesian par_xy) : name(str), xy(par_xy) {}
+    double rotation;    // angle
+    // constructor
+    Item() : name("unknownItem"), xy(Cartesian(0.0, 0.0)), rotation(0.0) {}
+    Item(std::string str, Cartesian par_xy, double par_rotation) : name(str), xy(par_xy), rotation(par_rotation) {}
+    // function
+    double getRadian() { return rotation * M_PI / 180.0; }
 } item;
 
 /* PadGroup */

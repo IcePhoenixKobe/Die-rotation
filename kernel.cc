@@ -5,7 +5,7 @@ using namespace std;
 static const int pad_width = 40;
 static const int pad_height = 60;
 
-// extern variables from gtk_GUI.cpp file
+// extern variables from windowsApp.cpp file
 extern map<string, map<string, PhysicalObject>> g_entireObjMap;
 
 // set global parameter with input argument
@@ -34,17 +34,17 @@ void check_argument(int argc, char* argv[])
 }
 
 // convert cartesian coordinate system to polar coordinate system
-Polar convert_cart_to_polar(Cartesian position)
+Polar convert_cart_to_polar(Cartesian cart)
 {
     Polar return_polar(0.0, 0.0);
     double x = 0.0, y = 0.0;
 
     // calculate radius
-    return_polar.radius = position.distance();
+    return_polar.radius = cart.distance();
 
     // calculate theta
-    x = position.x / return_polar.radius;
-    y = position.y / return_polar.radius;
+    x = cart.x / return_polar.radius;
+    y = cart.y / return_polar.radius;
     if (x >= 0 && y >= 0){   //Quadrant I
         return_polar.angle = (asin(y) + acos(x)) / 2;
     }
@@ -63,6 +63,7 @@ Polar convert_cart_to_polar(Cartesian position)
 // calculate center of gravity by cartesian coordinate system
 Cartesian CG(vector<Cartesian> pos)
 {
+    if (pos.size() == 1) return pos[0];
     Cartesian cg(0.0, 0.0);
     for (size_t i = 0; i < pos.size(); i++)
     {
@@ -97,7 +98,7 @@ bool ignore_Power_Ground(string str)
 
 void dataTransfer(){
     
-    map<string, map<string, item>> items;   // record object name and position
+    map<string, map<string, item>> items;   // record object name and location
     map<Group, PadGroup> padGroupMap;
     items.clear();
     padGroupMap.clear();
@@ -140,23 +141,23 @@ void initialize(map<string, map<string, item>> &items,
                 NetlistContainer.push_back(&padToPadLine);
             
                 // constructor the 'PhysicalObject' to pad and store it
-                g_entireObjMap["InnerNetlistMap"][inner_nets[i].relation_name] = PhysicalObject(
-                        inner_nets[i].relation_name,        // the name of the netlist
+                g_entireObjMap["InnerNetlistMap"][inner_nets[i].name] = PhysicalObject(
+                        inner_nets[i].name,        // the name of the netlist
                         NetlistContainer.getCenterPoint(),  // the center of the 
                         NetlistContainer                                    // correspond DrawContainer
                         );
             }
             // draw multi line
             else {
-                // the border position of the pads
+                // the border location of the pads
                 double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
                                 maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
                 {
                     for (size_t j = 0; j < inner_nets[i].dice_pads1_index.second.size(); j++) {
                         // get the center point of the pad
                         Point padCenter(
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y);
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y);
                         // update maxX
                         if(maxX < padCenter.x) maxX = padCenter.x;
                         // update minX
@@ -169,8 +170,8 @@ void initialize(map<string, map<string, item>> &items,
                     for (size_t j = 0; j < inner_nets[i].dice_pads2_index.second.size(); j++) {
                         // get the center point of the pad
                         Point padCenter(
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).x, 
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).y);
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).x, 
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads2_index.first, inner_nets[i].dice_pads2_index.second[j]).y);
                         // update maxX
                         if(maxX < padCenter.x) maxX = padCenter.x;
                         // update minX
@@ -192,8 +193,8 @@ void initialize(map<string, map<string, item>> &items,
                     for (size_t j = 0; j < inner_nets[i].dice_pads1_index.second.size(); j++) {
                         DrawLine padToCGLine(
                             Point(    // start point is one of pad of pads1
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
-                            -(chip->get_Die_Pad_Position(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y)), 
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).x, 
+                            -(chip->get_Die_Pad_Location(inner_nets[i].dice_pads1_index.first - 1, inner_nets[i].dice_pads1_index.second[j]).y)), 
                             Point(inner_nets[i].pad1_car.x, -(inner_nets[i].pad1_car.y)),  // end point is pads1 CG
                             Color(1.0, 0.2, 0.2)    // ???color
                         );
@@ -211,8 +212,8 @@ void initialize(map<string, map<string, item>> &items,
                     for (size_t j = 0; j < inner_nets[i].dice_pads2_index.second.size(); j++) {
                         DrawLine padToCGLine(
                             Point(    // start point is one of pad of pads2
-                            chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).x, 
-                            -(chip->get_Die_Pad_Position(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).y)), 
+                            chip->get_Die_Pad_Location(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).x, 
+                            -(chip->get_Die_Pad_Location(inner_nets[i].dice_pads2_index.first - 1, inner_nets[i].dice_pads2_index.second[j]).y)), 
                             Point(inner_nets[i].pad2_car.x, -(inner_nets[i].pad2_car.y)),  // end point is pad1s CG
                             Color(1.0, 0.2, 0.2)    // ???color
                         );
@@ -221,8 +222,8 @@ void initialize(map<string, map<string, item>> &items,
                 }
 
                 // constructor the 'PhysicalObject' to pad and store it
-                g_entireObjMap["InnerNetlistMap"][inner_nets[i].relation_name] = PhysicalObject(
-                        inner_nets[i].relation_name,        // the name of the netlist
+                g_entireObjMap["InnerNetlistMap"][inner_nets[i].name] = PhysicalObject(
+                        inner_nets[i].name,        // the name of the netlist
                         NetlistContainer.getCenterPoint(),  // the center of the 
                         NetlistContainer                                    // correspond DrawContainer
                         );
@@ -255,23 +256,23 @@ void initialize(map<string, map<string, item>> &items,
                 NetlistContainer.push_back(&padToPadLine);
             
                 // constructor the 'PhysicalObject' to pad and store it
-                g_entireObjMap["OuterNetlistMap"][outer_nets[i].relation_name] = PhysicalObject(
-                        outer_nets[i].relation_name,        // the name of the netlist
+                g_entireObjMap["OuterNetlistMap"][outer_nets[i].name] = PhysicalObject(
+                        outer_nets[i].name,        // the name of the netlist
                         NetlistContainer.getCenterPoint(),  // the center of the 
                         NetlistContainer                                    // correspond DrawContainer
                         );
             }
             // draw multi line
             else {
-                // the border position of the balls and pads
+                // the border location of the balls and pads
                 double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
                                 maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
                 {
                     for (size_t j = 0; j < outer_nets[i].balls_index.size(); j++) {
                         // get the center point of the pad
                         Point padCenter(
-                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).x, 
-                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).y);
+                            chip->get_Ball_Location(outer_nets[i].balls_index[j]).x, 
+                            chip->get_Ball_Location(outer_nets[i].balls_index[j]).y);
                         // update maxX
                         if(maxX < padCenter.x) maxX = padCenter.x;
                         // update minX
@@ -285,8 +286,8 @@ void initialize(map<string, map<string, item>> &items,
                         for (size_t k = 0; k < outer_nets[i].dice_pads_index[j].size(); k++) {
                             // get the center point of the pad
                             Point padCenter(
-                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).x, 
-                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).y);
+                                chip->get_Die_Pad_Location(j, outer_nets[i].dice_pads_index[j][k]).x, 
+                                chip->get_Die_Pad_Location(j, outer_nets[i].dice_pads_index[j][k]).y);
                             // update maxX
                             if(maxX < padCenter.x) maxX = padCenter.x;
                             // update minX
@@ -310,8 +311,8 @@ void initialize(map<string, map<string, item>> &items,
                         for (size_t k = 0; k < outer_nets[i].dice_pads_index[j].size(); k++) {
                             DrawLine padToCGLine(
                                 Point(    // start point is one of pad of pads1
-                                chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).x, 
-                                -(chip->get_Die_Pad_Position(j, outer_nets[i].dice_pads_index[j][k]).y)), 
+                                chip->get_Die_Pad_Location(j, outer_nets[i].dice_pads_index[j][k]).x, 
+                                -(chip->get_Die_Pad_Location(j, outer_nets[i].dice_pads_index[j][k]).y)), 
                                 Point(outer_nets[i].pad_car.x, -(outer_nets[i].pad_car.y)),  // end point is pads1 CG
                                 Color(1.0, 0.5, 0.5)    // ???color
                             );
@@ -330,8 +331,8 @@ void initialize(map<string, map<string, item>> &items,
                     for (size_t j = 0; j < outer_nets[i].balls_index.size(); j++) {
                         DrawLine padToCGLine(
                             Point(    // start point is one of pad of pads2
-                            chip->get_Ball_Position(outer_nets[i].balls_index[j]).x, 
-                            -(chip->get_Ball_Position(outer_nets[i].balls_index[j]).y)), 
+                            chip->get_Ball_Location(outer_nets[i].balls_index[j]).x, 
+                            -(chip->get_Ball_Location(outer_nets[i].balls_index[j]).y)), 
                             Point(outer_nets[i].ball_car.x, -(outer_nets[i].ball_car.y)),  // end point is pad1s CG
                             Color(1.0, 0.5, 0.5)    // ???color
                         );
@@ -340,8 +341,8 @@ void initialize(map<string, map<string, item>> &items,
                 }
 
                 // constructor the 'PhysicalObject' to pad and store it
-                g_entireObjMap["OuterNetlistMap"][outer_nets[i].relation_name] = PhysicalObject(
-                        outer_nets[i].relation_name,        // the name of the netlist
+                g_entireObjMap["OuterNetlistMap"][outer_nets[i].name] = PhysicalObject(
+                        outer_nets[i].name,        // the name of the netlist
                         NetlistContainer.getCenterPoint(),  // the center of the 
                         NetlistContainer                                    // correspond DrawContainer
                     );
@@ -349,17 +350,17 @@ void initialize(map<string, map<string, item>> &items,
         }
     }
     
-    chip->Original_Dice_Pads();
+    //chip->Original_Dice_Pads();
 
     // 1. insert all pads
     for (size_t i = 0; i < chip->get_Dice_Amount(); i++)
     {
         pads.clear();
         Die die = chip->get_Die(i);
-        for (size_t j = 0; j < die.get_Pad_Amount(); j++)
+        for (size_t j = 0; j < die.get_Pads_Amount(); j++)
         {
             temp_item.name = die.get_Pad_Name(j);
-            temp_item.xy = Cartesian(die.get_Cart_Position(j).x, -die.get_Cart_Position(j).y);
+            temp_item.xy = Cartesian(die.get_Pad_Cart_Location(j).x, -die.get_Pad_Cart_Location(j).y);
             pads[temp_item.name] = temp_item;
         }
         stringstream ss;
@@ -370,10 +371,10 @@ void initialize(map<string, map<string, item>> &items,
     }
 
     // 2. insert all BGA balls
-    for (size_t t = 0; t < chip->get_Ball_Amount(); t++)
+    for (size_t t = 0; t < chip->get_Balls_Amount(); t++)
     {
         temp_item.name = chip->get_Ball_Name(t);
-        temp_item.xy = Cartesian(chip->get_Ball_Position(t).x, -chip->get_Ball_Position(t).y);
+        temp_item.xy = Cartesian(chip->get_Ball_Location(t).x, -chip->get_Ball_Location(t).y);
         balls[temp_item.name] = temp_item;
     }
 	items["ball"] = balls;
@@ -381,7 +382,7 @@ void initialize(map<string, map<string, item>> &items,
     // Draw Dice
     for (size_t die_index = 0; die_index < chip->get_Dice_Amount(); die_index++)
     {
-        // the border position of the die
+        // the border location of the die
         double maxX = -1.0 * chip->drc.packageSize.x, minX = chip->drc.packageSize.x, 
                         maxY = -1.0 * chip->drc.packageSize.y, minY = chip->drc.packageSize.y;
         
@@ -392,7 +393,7 @@ void initialize(map<string, map<string, item>> &items,
         const map<string, item> pads = items.at(item_name);
         cout << "size of " << item_name << ": " << pads.size() << endl;
         
-        // find the border position of the pads in "pad + die_index"
+        // find the border location of the pads in "pad + die_index"
         for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it){
             // get the center point of the pad
             Point padCenter(map_it->second.xy.x, map_it->second.xy.y);
@@ -406,7 +407,7 @@ void initialize(map<string, map<string, item>> &items,
             if(minY > padCenter.y) minY = padCenter.y;
         }
 
-        // print out the border position of the die
+        // print out the border location of the die
         cout << "die " << die_index + 1 << ": " << endl
                   << "  minX: " << minX << endl
                   << "  maxX: " << maxX << endl
@@ -430,7 +431,7 @@ void initialize(map<string, map<string, item>> &items,
         
         DieContainer.push_back(&DieRect);
 
-        // according to the position of the pad, put it to the suitable 'PadGroup'
+        // according to the location of the pad, put it to the suitable 'PadGroup'
         for(map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); ++map_it)
         {
             // get the center point of the pad
@@ -444,7 +445,7 @@ void initialize(map<string, map<string, item>> &items,
             nearV = (maxY - padCenter.y) / (maxY - minY);
             nearH = (maxX - padCenter.x) / (maxX - minX);
             
-            // if 'nearV' is less than or equal to 0.5, the y position of pad is near to 'Group::DOWN'
+            // if 'nearV' is less than or equal to 0.5, the y location of pad is near to 'Group::DOWN'
             // otherwise it is near to 'Group::UP'
             if(nearV <= 0.5){
                 groupV = Group::DOWN;
@@ -454,7 +455,7 @@ void initialize(map<string, map<string, item>> &items,
                 nearV = 1.0 - nearV;
             }
 
-            // if 'nearH' is less than or equal to 0.5, the x position of pad is near to 'Group::RIGHT'
+            // if 'nearH' is less than or equal to 0.5, the x location of pad is near to 'Group::RIGHT'
             // otherwise it is near to 'Group::LEFT'
             if(nearH <= 0.5){
                 groupH = Group::RIGHT;
@@ -514,7 +515,7 @@ void initialize(map<string, map<string, item>> &items,
                 );
     }
 
-    // Draw BGA Ball
+    // Draw BGA Balls
     // create 'PhysicalObject' object to each ball and store it into 'g_entireObjMap' with key 'ballMap'
     const map<string, item> all_balls = items.at("ball");
     for(map<string, item>::const_iterator map_it = all_balls.begin(); map_it != all_balls.end(); ++map_it)
