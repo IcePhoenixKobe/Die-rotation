@@ -83,7 +83,7 @@ public:
     void set_Pad_Rotation(std::string par_number, double par_rota) { pads[par_number].rotation = par_rota; }
 
     // Other function
-    //void Original_Location();
+    void Original_Location(double);
 };
 
 class Chip
@@ -113,10 +113,10 @@ public:
     std::map<std::string, std::string> get_Balls_Name() const;
     std::map<std::string, Cartesian> get_Balls_Location() const;
     //
-    std::string get_Ball_Name(std::string par_number) { return balls[par_number].get_Name(); }
-    Cartesian get_Ball_Location(std::string par_number) { return balls[par_number].get_Location(); }
+    std::string get_Ball_Name(std::string par_number) const { return balls.at(par_number).get_Name(); }
+    Cartesian get_Ball_Location(std::string par_number) const { return balls.at(par_number).get_Location(); }
     // additional get function
-    std::vector<Cartesian> get_Some_Balls_Location(std::vector<std::string>);
+    std::vector<Cartesian> get_Some_Balls_Location(std::vector<std::string>) const;
     // get dice's information
     std::vector<Die> get_Dice() const { return dice; }
     size_t get_Dice_Amount() const { return dice.size(); }
@@ -156,12 +156,16 @@ public:
         assert(index < dice.size());
         dice[index] = Die(par_width, par_height, par_center);
     }
-    void insert_Die_Pad(size_t index, std::string par_name, item par_pad) { dice[index].set_Pad(par_name, par_pad); }
+    void insert_Die_Pad(size_t index, std::string par_number, item par_pad) {
+        while (index >= dice.size())
+            dice.push_back(Die());
+        dice[index].set_Pad(par_number, par_pad);
+    }
     // set the data of netlist
     void set_All_I_Netlist(std::map<std::string, relationship> par_inner_relations) { internal_netlist = par_inner_relations; }
     void set_All_E_Netlist(std::map<std::string, relationship> par_outer_relations) { external_netlist = par_outer_relations; }
-    void insert_Internal_Net(std::string par_name, relationship par_relation) { internal_netlist[par_name] = par_relation; }
-    void insert_External_Net(std::string par_name, relationship par_relation) { external_netlist[par_name] = par_relation; }
+    void insert_Internal_Net(std::string par_number, relationship par_relation) { internal_netlist[par_number] = par_relation; }
+    void insert_External_Net(std::string par_number, relationship par_relation) { external_netlist[par_number] = par_relation; }
     /*====================*/
     
     // file output
@@ -169,7 +173,7 @@ public:
     void output_M_File(std::ofstream&, char*);
     /*====================*/
 
-    //void Original_Dice_Pads();
+    void Original_Die_Pads(size_t die_index, double rotation) { dice[die_index].Original_Location(rotation); }
 };
 
 #endif  // CHIP_H

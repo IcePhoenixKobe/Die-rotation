@@ -75,6 +75,8 @@ bool ignore_Power_Ground(std::string);
 Polar convert_cart_to_polar(Cartesian);
 // calculate center of gravity by cartesian coordinate system
 Cartesian CG(std::vector<Cartesian>);
+// point rotation
+Cartesian shift_rotation(Cartesian, Cartesian, Cartesian, double);
 
 /* use to classify padGroup, currently we have four directions for Group */
 enum class Group{

@@ -59,29 +59,15 @@ map<string, double> Die::get_Pads_Radian()
     return return_map;
 }
 
-/*void Die::Original_Location()
+void Die::Original_Location(double rotation)
 {
-    for (size_t i = 0; i < name.size(); i++)
+    for (map<string, item>::iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
     {
-        double temp_rotation = rotation[i];
-        while (temp_rotation >= M_PI_2) temp_rotation -= M_PI_2;
-        while (temp_rotation <= M_PI_2) temp_rotation += M_PI_2;
-        temp_rotation -= M_PI_2;
-        location[i].first = Cartesian(
-                    (
-                        (location[i].first.x - center.x) * cos(-temp_rotation) 
-                        - (location[i].first.y - center.y) * sin(-temp_rotation)
-                    ) + center.x
-                , (
-                        (location[i].first.x - center.x) * sin(-temp_rotation) 
-                        + (location[i].first.y - center.y) * cos(-temp_rotation)
-                    ) + center.y
-            );
-        location[i].second = convert_cart_to_polar(location[i].first);
+        map_it->second.xy = shift_rotation(map_it->second.xy, center, Cartesian(0.0, 0.0), -rotation);
+        map_it->second.rotation -= rotation;
     }
-    
     return;
-}*/
+}
 
 /* 
     Chip class defination
@@ -123,7 +109,7 @@ void Chip::balls_Content()
         cout << fixed << setprecision(3) 
             << setw(8) << ball_it->first 
             << " (x,y): (" 
-            << setw(10) << ball_it->second.get_Location().x 
+            << setw(10) << ball_it->second.get_Location().x << ", "
             << setw(10) << ball_it->second.get_Location().y << ")\n";
     cout << "----------Ball Content----------\n";
     return;
@@ -144,8 +130,8 @@ void Chip::dice_Content()
         for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++) {
             Polar pad_pol = convert_cart_to_polar(map_it->second.xy);
             cout << fixed << setprecision(3) << setw(9) << map_it->first
-                            << " (x,y): (" << setw(10) << map_it->second.xy.x << ", " << setw(10)<< map_it->second.xy.y << ")"
-                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle
+                            << " (x,y): (" << setw(10) << map_it->second.xy.x << ", " << setw(10)<< map_it->second.xy.y << ") |"
+                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle * 180 / M_PI << ") |"
                             << " rotation: " << setw(7) << map_it->second.rotation << endl;
         }
     }
@@ -216,7 +202,7 @@ map<string, Cartesian> Chip::get_Balls_Location() const
 }
 
 // get location of some balls
-vector<Cartesian> Chip::get_Some_Balls_Location(vector<string> balls_number)
+vector<Cartesian> Chip::get_Some_Balls_Location(vector<string> balls_number) const
 {
     vector<Cartesian> return_vector;
     return_vector.clear();
@@ -442,10 +428,3 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
     fout << ";";
     return;
 }
-
-/*void Chip::Original_Dice_Pads()
-{
-    for (size_t i = 0; i < dice.size(); i++)
-        dice[i].Original_Location();
-    return;
-}*/

@@ -6,48 +6,48 @@ using namespace std;
 void parse_Drc(std::ifstream& fin)
 {
 	string str, info_name;
-    stringstream ss;
+    stringstream str_stream;
 
     str.clear();
-    ss.clear();
+    str_stream.clear();
 
     while (getline(fin, str))
 	{
-        ss.clear();
+        str_stream.clear();
         info_name.clear();
 
-        ss << str;
-        ss >> info_name;
+        str_stream << str;
+        str_stream >> info_name;
 
         if (info_name.find("packagesizeX") != string::npos) {
-            ss >> chip->drc.packageSize.x;
+            str_stream >> chip->drc.packageSize.x;
         }
         else if (info_name.find("packagesizeY") != string::npos) {
-            ss >> chip->drc.packageSize.y;
+            str_stream >> chip->drc.packageSize.y;
         }
         else if (info_name.find("ballpitch") != string::npos) {
-            ss >> chip->drc.ballPitch;
+            str_stream >> chip->drc.ballPitch;
         }
         else if (info_name.find("balldiameter") != string::npos) {
-            ss >> chip->drc.ballDiameter;
+            str_stream >> chip->drc.ballDiameter;
         }
         else if (info_name.find("balldimensionX") != string::npos) {
-            ss >> chip->drc.ballDimensionX;
+            str_stream >> chip->drc.ballDimensionX;
         }
         else if (info_name.find("balldimensionY") != string::npos) {
-            ss >>  chip->drc.ballDimensionY;
+            str_stream >>  chip->drc.ballDimensionY;
         }
         else if (info_name.find("viadiameter") != string::npos) {
-            ss >> chip->drc.viaDiameter;
+            str_stream >> chip->drc.viaDiameter;
         }
         else if (info_name.find("wirewidth") != string::npos) {
-            ss >> chip->drc.wireWidth;
+            str_stream >> chip->drc.wireWidth;
         }
         else if (info_name.find("spacing") != string::npos) {
-            ss >> chip->drc.spacing;
+            str_stream >> chip->drc.spacing;
         }
         else if (info_name.find("numlayer") != string::npos) {
-            ss >> chip->drc.numLayer;
+            str_stream >> chip->drc.numLayer;
         }
         else {
             cout << "skip " << info_name << endl;
@@ -65,132 +65,86 @@ void parse_PIN(ifstream& fin)
 	bool isBall = false;
 	bool isDie = false;
 	size_t die_number = 0, dice_amount = 0;
-	string str;
-    string temp_str;
-	string pin_name;    // temp variable of item name
-    Cartesian pin_cartesian(0.0, 0.0);
-    stringstream str_stream;    // string stream of each line of file
-	vector<string> balls_name;
-	vector<Cartesian> balls_cartesian;  // all BGA balls location
-	vector<Cartesian> dice_center;  // all dice center
-	vector<vector<string>> dice_pads_name;       // all pads name
-	vector<vector<Cartesian>> dice_pads_cartesian;    // all pads location
-    vector<vector<double>> dice_pads_rotation;
+	string str, temp_str;                           // variable of each line and some  word of line
+    item temp_item;
+	string pin_number;                          // variable of pin number
+    Cartesian die_center(0.0, 0.0);     // current die center
+    stringstream str_stream;                // string stream of each line of file
     
     str.clear();
     temp_str.clear();
-    pin_name.clear();
+    pin_number.clear();
     str_stream.clear();
     str_stream.str("");
-    balls_name.clear();
-    balls_cartesian.clear();
-    dice_center.clear();
-    dice_pads_name.clear();
-    dice_pads_cartesian.clear();
-    dice_pads_rotation.clear();
 
     while (getline(fin, str))
 	{
         str_stream.clear();
         str_stream.str(str);
-        str_stream >> temp_str; // get first string of line
+        str_stream >> temp_str; // get first word of line
         //cout << "temp_str: " << temp_str << endl;
 
-        // first: get pin number
+        // first: get pin number & pin_name
 		if (temp_str.find("pin") != string::npos)
         {
-            str_stream >> temp_str; // get "number:"
+            str_stream >> temp_str; // get "number:" or "name:"
             if (temp_str.find("number:") != string::npos)
             {
-                str_stream >> temp_str; // get pin number
-                if (temp_str.find("BGA") != string::npos)
+                // re-initialize
+                temp_item = item();
+                die_center = Cartesian(0.0, 0.0);
+                str_stream >> pin_number; // get pin number
+                if (pin_number.find("BGA") != string::npos) {
                     isBall = true;
-                else if (temp_str.find("DIE") != string::npos)
+                }
+                else if (pin_number.find("DIE") != string::npos) {
                     isDie = true;
-                else
-                {
+                    die_number = atoi(pin_number.substr(3, pin_number.find(".") - 3).c_str());
+                }
+                else {
+                    cout << "Warning: pin " << pin_number << " be ignored\n";
                     isBall = false;
                     isDie = false;
                 }
-
-                if (isBall || isDie)
-                {
-                    pin_name = temp_str;
-                    if (isDie)
-                    {
-                        stringstream string_cache(pin_name.substr(3, pin_name.find(".") - 3));
-                        string_cache >> die_number;
-                    }
-                }
+            }
+            else if (temp_str.find("name:") != string::npos) {
+                str_stream >> temp_item.name; // get pin name
             }
         }
-        
+
 		// second: get location of die pad or BGA ball
-		if (temp_str.find("location-xy:") != string::npos) // if found location of pad or ball
+		if (temp_str.find("location-xy:") != string::npos && (isDie || isBall)) // if found location of pad or ball
 		{
 			str_stream >> temp_str;  // x coordinate(e.g. "(0.00")
 			temp_str.erase(0, 1);    // clean left quote
-			pin_cartesian.x = stod(temp_str);
+			temp_item.xy.x = stod(temp_str);
 			str_stream >> temp_str;  // y coordinate(e.g. "0.00)")
 			temp_str.erase(temp_str.size() - 1, 1);//clean right quote
-			pin_cartesian.y = stod(temp_str);
+			temp_item.xy.y = stod(temp_str);
         }
 
         // third: get rotation of pad
         if (temp_str.find("padstack") != string::npos && (isDie || isBall))
         {
-            str_stream >> temp_str;
+            str_stream >> temp_str; // get "rotation:"
             if (temp_str.find("rotation:") != string::npos)
             {
-                double rotation = 0.0;
-                str_stream >> rotation;
-                rotation = rotation * M_PI / 180;
+                str_stream >> temp_item.rotation; // store angle
 
                 // set data
                 if (isBall && !isDie)   // ball location
                 {
-                    balls_name.push_back(pin_name);
-                    balls_cartesian.push_back(pin_cartesian);
+                    chip->insert_Ball(pin_number, Ball(temp_item));
                     isBall = false;
                 }
                 else if (isDie && !isBall)  // die pad location
                 {
-                    if (die_number <= dice_amount)  // direct assign
-                    {
-                        dice_pads_name[die_number - 1].push_back(pin_name);
-                        dice_pads_cartesian[die_number - 1].push_back(pin_cartesian);
-                        dice_pads_rotation[die_number - 1].push_back(rotation);
-                    }
-                    else
-                    {
-                        while (dice_amount < die_number)    // new dice until dice_amount equal to die_number
-                        {
-                            vector<string> pads_name;
-                            vector<Cartesian> pads_cartesian;
-                            vector<double> pads_rotation;
-
-                            pads_name.clear();
-                            pads_cartesian.clear();
-                            pads_rotation.clear();
-
-                            dice_center.push_back(Cartesian(0, 0));
-                            if (dice_amount == die_number - 1)  // assign current data into chip
-                            {
-                                pads_name.push_back(pin_name);
-                                pads_cartesian.push_back(pin_cartesian);
-                                pads_rotation.push_back(rotation);
-                            }
-                            dice_pads_name.push_back(pads_name);
-                            dice_pads_cartesian.push_back(pads_cartesian);
-                            dice_pads_rotation.push_back(pads_rotation);
-
-                            dice_amount++;
-                        }
-                    }
+                    chip->insert_Die_Pad(die_number - 1, pin_number, temp_item);
+                    if (die_number > dice_amount)
+                        dice_amount = die_number;
                 }
-                else
-                {
-                    cout << "error: At " << pin_name << ", isBall and isDie at the same times.\n";
+                else {
+                    cout << "error: At " << pin_number << ", isBall and isDie at the same times.\n";
                     exit(0);
                 }
             }
@@ -200,92 +154,20 @@ void parse_PIN(ifstream& fin)
         if (temp_str.find("Symbol:") != string::npos && isDie) // if found center of die
         {
             str_stream >> temp_str;
-            str_stream >> temp_str;
+            str_stream >> temp_str; // get "at"
             assert(temp_str.find("at") != string::npos);
 
-            str_stream >> dice_center[die_number - 1].x;  // get x coordinate of center
-            str_stream >> temp_str;
+            str_stream >> die_center.x;  // get x coordinate of center
+            str_stream >> temp_str; // get ","
             assert(temp_str.find(",") != string::npos);
-            str_stream >> dice_center[die_number - 1].y;  // get x coordinate of center
-            
+            str_stream >> die_center.y;  // get x coordinate of center
+
+            chip->set_Die_Center(die_number - 1, die_center);
             isDie = false;
         }
 	}
-    
-    // parse done and do set
-    assert(balls_name.size() == balls_cartesian.size());
-    chip->set_Balls_Amount(balls_name.size());
-    chip->set_Balls_Name(balls_name);
-    chip->set_Balls_Location(balls_cartesian);
 
-    chip->set_Dice_Amount(dice_amount);
-    assert(dice_center.size() == dice_amount);
-    for (size_t i = 0; i < dice_amount; i++)
-    {
-        assert(dice_pads_name[i].size() == dice_pads_cartesian[i].size());
-        assert(dice_pads_cartesian[i].size() == dice_pads_rotation[i].size());
-
-        if (dice_amount == 1) dice_center[i] = Cartesian(0.0, 0.0);
-        chip->set_Die_Amount_Center(i, dice_pads_name[i].size(), dice_center[i]);
-
-        // GOD hand
-        if (ori_rotas.size() != 0)
-        {
-            if (i == 0)
-                chip->set_Die_Center(0, GOD_Center);
-            else if (i == 1)
-                chip->set_Die_Center(1, GOD_GOD_Center);
-            
-            for (size_t j = 0; j < dice_pads_name[i].size(); j++)
-            {
-                double temp_rotation = dice_pads_rotation[i][j];
-
-                //double temp_rotation = dice_pads_rotation[i][j];
-                while(temp_rotation >= M_PI_2) temp_rotation -= M_PI_2;
-                while (temp_rotation <= -M_PI_2) temp_rotation += M_PI_2;
-
-                dice_pads_cartesian[i][j] = Cartesian(
-                        (
-                            (dice_pads_cartesian[i][j].x - dice_center[i].x) * cos(-temp_rotation) 
-                            - (dice_pads_cartesian[i][j].y - dice_center[i].y) * sin(-temp_rotation)
-                        ) + dice_center[i].x
-                    , (
-                            (dice_pads_cartesian[i][j].x - dice_center[i].x) * sin(-temp_rotation) 
-                            + (dice_pads_cartesian[i][j].y - dice_center[i].y) * cos(-temp_rotation)
-                        ) + dice_center[i].y
-                );
-
-                if (i == 0) {
-                    dice_pads_cartesian[i][j].x += (-dice_center[i].x + GOD_Center.x);
-                    dice_pads_cartesian[i][j].y += (-dice_center[i].y + GOD_Center.y);
-                    dice_pads_rotation[i][j] += GOD_Rotation;
-                    temp_rotation += GOD_Rotation;
-                }
-                else if (i == 1) {
-                    dice_pads_cartesian[i][j].x += (-dice_center[i].x + GOD_GOD_Center.x);
-                    dice_pads_cartesian[i][j].y += (-dice_center[i].y + GOD_GOD_Center.y);
-                    dice_pads_rotation[i][j] += GOD_GOD_Rotation;
-                    temp_rotation += GOD_GOD_Rotation;
-                }
-                while(temp_rotation >= M_PI_2) temp_rotation -= M_PI_2;
-                while (temp_rotation <= -M_PI_2) temp_rotation += M_PI_2;
-
-                dice_pads_cartesian[i][j] = Cartesian(
-                        (
-                            (dice_pads_cartesian[i][j].x - chip->get_Die_Center(i).x) * cos(temp_rotation) 
-                            - (dice_pads_cartesian[i][j].y - chip->get_Die_Center(i).y) * sin(temp_rotation)
-                        ) + chip->get_Die_Center(i).x
-                    , (
-                            (dice_pads_cartesian[i][j].x - chip->get_Die_Center(i).x) * sin(temp_rotation) 
-                            + (dice_pads_cartesian[i][j].y - chip->get_Die_Center(i).y) * cos(temp_rotation)
-                        ) + chip->get_Die_Center(i).y
-                );
-            }
-        }
-
-        // final seting
-        chip->set_Die_Pads(i, dice_pads_name[i], dice_pads_cartesian[i], dice_pads_rotation[i]);
-    }
+    if (dice_amount == 1) chip->set_Die_Center(0, Cartesian(0.0, 0.0)); // set  center as (0.0, 0.0) if only one die
 
     fin.close();
     cout << "parse pin DONE\n";
@@ -295,22 +177,27 @@ void parse_PIN(ifstream& fin)
 /* parse netlist of chip */
 void parse_Netlist(ifstream& fin)
 {
-    string str, str_temp;   // str_temp: get multi line netlist and combine into str
+    string str;   // str_temp: get multi line netlist and combine into str
     vector<string> BGAs;
     vector<string> DIEs;
-    vector<InnerRelationship> internal_netlist;
-    vector<OuterRelationship> external_netlist;
+    vector<relationship> internal_netlist;
+    vector<relationship> external_netlist;
 
     str.clear();
-    str_temp.clear();
+    BGAs.clear();
+    DIEs.clear();
     internal_netlist.clear();
     external_netlist.clear();
 
     // Try to find "$NET"
-    do getline(fin, str_temp); while (str_temp.find("$NETS") == string::npos && !fin.eof());
+    do getline(fin, str); while (str.find("$NETS") == string::npos && !fin.eof());
 
-    if (!fin.eof()) // found $NET
+    if (!fin.eof()) // found $NET, parse single die netlist
     {
+        string str_temp;
+        str.clear();
+        str_temp.clear();
+
         // start to parse single die netlist
         while (getline(fin, str_temp) && str_temp.find("$END") == string::npos)
         {
@@ -321,33 +208,33 @@ void parse_Netlist(ifstream& fin)
             }
             else    // analysis net
             {
-                string netlist_name;
-                stringstream ss;
+                string net_name;
+                stringstream str_stream;
 
-                netlist_name.clear();
-                ss.clear();
+                net_name.clear();
+                str_stream.clear();
+                str_stream.str("");
 
                 str += str_temp;
-                ss << str;
-                ss >> netlist_name;  // get external_netlist name
+                str_stream << str;
+                str_stream >> net_name;  // get external_netlist name
 
-                if (ignore_Power_Ground(netlist_name))
+                if (ignore_Power_Ground(net_name))
                 {}
                 else if (str.find("BGA") != string::npos && str.find("DIE") != string::npos)   // filter only one kind of pin
                 {
-                    OuterRelationship rela_s;
+                    relationship rela_s = relationship();
                     string sub_str;
                     sub_str.clear();
                     
-                    rela_s.name = netlist_name;    // set name
-                    ss >> sub_str;  // get ";"
+                    str_stream >> sub_str;  // get ";"
                     if (sub_str.find(";") != string::npos)
                     {
                         BGAs.clear();
                         DIEs.clear();
 
                         // Categories balls and dice pads
-                        while (ss >> sub_str)
+                        while (str_stream >> sub_str)
                         {
                             if (sub_str.find("BGA") != string::npos)
                                 BGAs.push_back(sub_str);
@@ -357,63 +244,14 @@ void parse_Netlist(ifstream& fin)
                                 cout << "Warning: netlist has no BGA or DIE\n";
                         }
                         
-                        // Get all data of balls
-                        vector<Cartesian> cars;
-                        vector<size_t> balls_index;
-
-                        cars.clear();
-                        balls_index.clear();
-                        for (size_t i = 0; i < BGAs.size(); i++)
-                        {
-                            size_t index = chip->get_Ball_Index(BGAs[i]);   // set ball_index
-                            if (index == -1UL)
-                            {
-                                cout << "error: Not found " << BGAs[i] << endl;
-                                exit(0);
-                            }
-                            else
-                            {
-                                cars.push_back(chip->get_Ball_Location(index));
-                                balls_index.push_back(index);
-                            }
-                        }
-                        
                         // set data of balls
-                        rela_s.balls_index = balls_index;
-                        rela_s.ball_car = CG(cars);
-                        
-                        // Get all data of die pads
-                        vector<vector<size_t>> dice_pads_index;
-                        
-                        cars.clear();
-                        dice_pads_index.clear();
-                        for (size_t i = 0; i < DIEs.size(); i++)
-                        {
-                            pair<size_t, size_t> index(-1UL, -1UL);
-                            stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
-
-                            string_cache >> index.first;    // set die_index
-                            for (size_t i = dice_pads_index.size(); i < index.first; i++) {
-                                dice_pads_index.push_back(vector<size_t>());
-                            }
-
-                            index.second = chip->get_Die_Pad_Index(index.first - 1, DIEs[i]);   // set pad_index
-                            if (index.second == -1UL)
-                            {
-                                cout << "error: Not found " << DIEs[i] << endl;
-                                exit(0);
-                            }
-                            else
-                            {
-                                cars.push_back(chip->get_Die_Pad_Location(index.first - 1, index.second));
-                                dice_pads_index[index.first - 1].push_back(index.second);
-                            }
-
-                            // assign data of dice pads
-                            rela_s.dice_pads_index = dice_pads_index;
-                            rela_s.pad_car = CG(cars);
-                        }
-                        external_netlist.push_back(rela_s);
+                        rela_s.pins1_number = 0;    // BGA balls
+                        rela_s.pins1 = BGAs;
+                        // set data of die pads
+                        rela_s.pins2_number = 1;    // only one die
+                        rela_s.pins2 = DIEs;
+                        // set external net
+                        chip->insert_External_Net(net_name, rela_s);
                     }
                     else
                     {
@@ -423,35 +261,34 @@ void parse_Netlist(ifstream& fin)
                 }
                 else
                 {
-                    cout << "warring: string \"" << str.substr(0, str.size() - 1) << "\" has no BGA and DIE\n";
+                    cout << "Warning: string \"" << str.substr(0, str.size() - 1) << "\" has no BGA and DIE\n";
                 }
                 str.clear();
             }
         }
     }
-    else
+    else    // parse multi_netlist
     {
-        // start to parse multi_netlist
         cout << "There is no \"$NET\" in netlist file\n";
         cout << "Use Net Name to parse netlist file\n";
+
+        bool isNet = false;
+        string temp_str, net_name;
+        stringstream str_stream;    // string stream of each line of file
+        vector<int> dice_number;
+        relationship rela_s = relationship();     // net
+        
         fin.clear();
         fin.seekg(ios::beg);   // Seek to begin of fin
         BGAs.clear();
         DIEs.clear();
-
-        bool isNet = false;
-        string temp_str, netlist_name;
-        stringstream str_stream;    // string stream of each line of file
-        OuterRelationship rela_s_O;
-        InnerRelationship rela_s_I;
-        vector<int> die_number;    // Store the die number that appeared
-        
         temp_str.clear();
-        netlist_name.clear();
+        net_name.clear();
         str_stream.clear();
         str_stream.str("");
-        die_number.clear();
+        dice_number.clear();
 
+        // start to parse multi_netlist
         while (getline(fin, str))
         {
             str_stream.clear();
@@ -464,21 +301,23 @@ void parse_Netlist(ifstream& fin)
                 str_stream >> temp_str; // get "Name:"
                 if (temp_str.find("Name:") != string::npos)
                 {
-                    str_stream >> netlist_name;  // get netlist name
+                    str_stream >> net_name;  // get netlist name
                     
-                    if (!ignore_Power_Ground(netlist_name))  // ignore power and ground if ignore_P_G is true
+                    if (!ignore_Power_Ground(net_name))  // ignore power and ground if ignore_P_G is true
                     {
-                        while(getline(fin, str) && str.find("---") == string::npos);    // skip middle data
+                        while(getline(fin, str) && str.find("---") == string::npos);    // skip the middle data until "---" appears
                         isNet = true;
                     }
                 }
             }
 
-            // second: get all pins and classify
+            // second: get all pins and classify. final insert
 		    if (isNet)
 		    {
                 BGAs.clear();
                 DIEs.clear();
+                dice_number.clear();
+                rela_s = relationship();
 
                 // get all pins of net
                 while(getline(fin,str) && ( str.find("BGA")  != string::npos || str.find("DIE")  != string::npos ))
@@ -489,17 +328,18 @@ void parse_Netlist(ifstream& fin)
 
                     if (temp_str.find("BGA") != string::npos)
                         BGAs.push_back(temp_str);
-                    else
-                    {
-                        bool not_appeared = true;
-                        int pin_number = atoi(temp_str.substr(3, temp_str.find('.') - 3).c_str());
-                        
-                        // Check if pin_number has appeared
-                        for (size_t i = 0; i < die_number.size() && not_appeared; i++)  if (die_number[i] == pin_number) not_appeared = false;
-                        // If pin_number has not appeared, add pin_number into die_number
-                        if (not_appeared) die_number.push_back(pin_number);
-
+                    else if (temp_str.find("DIE") != string::npos) {
                         DIEs.push_back(temp_str);
+                        int die_number = atoi(temp_str.substr(3, temp_str.find('.') - 3).c_str());
+                        
+                        // Check whether die_number has appeared
+                        bool not_appeared = true;
+                        for (size_t i = 0; i < dice_number.size() && not_appeared; i++)  if (dice_number[i] == die_number) not_appeared = false;
+                        // If pin_number has not appeared, add pin_number into die_number
+                        if (not_appeared) dice_number.push_back(die_number);
+                    }
+                    else {
+                        cout << "warring: pin \"" << temp_str << "\" be ignored\n";
                     }
                 }
 
@@ -507,145 +347,64 @@ void parse_Netlist(ifstream& fin)
 
                 // There is some problem maybe!!!
                 if (str.find("No connections remaining") == string::npos)
-                    cout << "Warning: netlist ‘" << netlist_name << "‘  has no BGA or DIE, and may have some pin miss catch.\n";
-                
-                // Decide to do combination or calculate center of gravity
-                if (BGAs.size() != 0 && DIEs.size() != 0)   // BGA balls to die pads
-                {
-                    // Calculate the center of gravity of BGA balls 
-                    vector<Cartesian> cars;
-                    vector<size_t> balls_index;
-                    balls_index.clear();
-
-                    rela_s_O = OuterRelationship();
-                    rela_s_O.name = netlist_name;  // set name
-                    for (size_t i = 0; i < BGAs.size(); i++)
-                    {
-                        size_t index = chip->get_Ball_Index(BGAs[i]);   // set ball_index
-                        if (index == -1UL)
-                        {
-                            cout << "error: Not found " << BGAs[i] << endl;
-                            exit(0);
-                        }
+                    cout << "Warning: netlist ‘" << net_name << "‘  has no BGA or DIE, and may have some pin miss catch.\n";
+                else {
+                    if (dice_number.size() == 0) {
+                        cout << "Warning: Ignoring \"" << net_name << "\". ";
+                        if (BGAs.size() != 0)
+                            cout << "There is only BGA balls.\n";
                         else
-                        {
-                            cars.push_back(chip->get_Ball_Location(index));
-                            balls_index.push_back(index);
-                        }
-                    }
-                    rela_s_O.balls_index = balls_index;
-                    rela_s_O.ball_car = CG(cars);
-                    
-                    // Calculate the center of gravity of die pads 
-                    vector<vector<size_t>> dice_pads_index;
-
-                    cars.clear();
-                    dice_pads_index.clear();
-                    for (size_t i = 0; i < DIEs.size(); i++)
-                    {
-                        pair<size_t, size_t> index(-1UL, -1UL);
-                        stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
+                            cout << "There is no any BGA ball and die pad.\n";
                         
-                        string_cache >> index.first;           // set die_index
-                        for (size_t i = dice_pads_index.size(); i < index.first; i++) {
-                            dice_pads_index.push_back(vector<size_t>());
-                        }
-                        index.second = chip->get_Die_Pad_Index(index.first - 1, DIEs[i]);   // set pad_index
-                        if (index.second == -1UL)
-                        {
-                            cout << "error: Not found " << DIEs[i] << endl;
-                            exit(0);
-                        }
-                        else
-                        {
-                            cars.push_back(chip->get_Die_Pad_Location(index.first - 1, index.second));
-                            dice_pads_index[index.first - 1].push_back(index.second);
-                        }
                     }
-                    rela_s_O.dice_pads_index = dice_pads_index;
-                    rela_s_O.pad_car = CG(cars);
-                    
-                    // insert relationship into outer netlist
-                    external_netlist.push_back(rela_s_O);
-                }
-                else if (DIEs.size() >= 2)  // die pads to die pads
-                {
-                    //cout << "kind of dice number: " << die_number.size() << endl;
-                    if (die_number.size() == 2) // Can not handle three or more dice's relationship
+                    if (BGAs.size() != 0 && dice_number.size() == 1)   // BGA balls to die pads
                     {
-                        vector<Cartesian> cars1, cars2;
-                        vector<size_t> pads1_index, pads2_index;
-                        pair<size_t, vector<size_t>> pads1, pads2;
-                        cars1.clear();
-                        cars2.clear();
-                        pads1_index.clear();
-                        pads2_index.clear();
-                        pads1.first = 0;
-                        pads2.first = 0;
-                        pads1.second.clear();
-                        pads2.second.clear();
+                        rela_s.pins1_number = 0;  // set pin1_number to 0
+                        rela_s.pins1 = BGAs;
+                        rela_s.pins2_number = dice_number[0]; // set pin2_number to die_number
+                        rela_s.pins2 = DIEs;
+                        // insert relationship into external netlist
+                        chip->insert_External_Net(net_name, rela_s);
+                    }
+                    else if (BGAs.size() != 0 && dice_number.size() > 1) {  // BGA balls connect to die pads of many die
+                        cout << "Ignoring \"" << net_name << "\". Current program can not handle.\n";
+                    }
+                    else if (dice_number.size() == 2)  // die pads of one die connect to another die pads of one die
+                    {
+                        int pads1_die_number = dice_number[0], pads2_die_number = dice_number[1];
+                        vector<string> pads1, pads2;
+                        pads1.clear();
+                        pads2.clear();
 
-                        rela_s_I = InnerRelationship();
-                        rela_s_I.name = netlist_name;  // set name
-                        for (size_t i = 0; i < DIEs.size(); i++)
+                        for (size_t i = 0; i < DIEs.size(); i++) // classify pads1 and pads2
                         {
-                            size_t die_index = -1UL, pad_index = -1UL;
-                            stringstream string_cache(DIEs[i].substr(3, DIEs[i].find(".") - 3));
-                            string_cache >> die_index;
-                            pad_index = chip->get_Die_Pad_Index(die_index - 1, DIEs[i]);
-
-                            if (pads1.first == 0 || pads1.first == die_index)
-                            {
-                                pads1.first = die_index;
-                                cars1.push_back(chip->get_Die_Pad_Location(die_index - 1, pad_index));
-                                pads1_index.push_back(pad_index);
+                            int die_number = atoi(DIEs[i].substr(3, DIEs[i].find(".") - 3).c_str());
+                            if (pads1_die_number == die_number) {
+                                pads1.push_back(DIEs[i]);
                             }
-                            else if (pads2.first == 0 || pads2.first == die_index)
-                            {
-                                pads2.first = die_index;
-                                cars2.push_back(chip->get_Die_Pad_Location(die_index - 1, pad_index));
-                                pads2_index.push_back(pad_index);
+                            else if (pads2_die_number == die_number) {
+                                pads2.push_back(DIEs[i]);
                             }
-                            else
-                            {
-                                cout << "error: more than two kind of dice";
+                            else {
+                                cout << "Error: DIEs has more than two kind of dice";
                                 exit(0);
                             }
                         }
-
-                        if (pads1_index.size() != 0 && pads2_index.size() != 0) // pads1 and pads2 must have element
-                        {
-                            rela_s_I.dice_pads1_index.first = pads1.first;  // set die number
-                            rela_s_I.dice_pads1_index.second = pads1_index; // set pads number
-                            rela_s_I.pad1_car = CG(cars1);
-                            rela_s_I.dice_pads2_index.first = pads2.first;  // set die number
-                            rela_s_I.dice_pads2_index.second = pads2_index; // set pads number
-                            rela_s_I.pad2_car = CG(cars2);
-
-                            // insert relationship into netlist
-                            internal_netlist.push_back(rela_s_I);
-                        }
+                        rela_s.pins1_number = pads1_die_number;
+                        rela_s.pins1 = pads1;
+                        rela_s.pins2_number = pads2_die_number;
+                        rela_s.pins2 = pads2;
+                        // insert relationship into internal netlist
+                        chip->insert_Internal_Net(net_name, rela_s);
                     }
+                    else if (dice_number.size() > 2) {  // die pads of many die connect each other
+                        cout << "Ignoring \"" << net_name << "\". Current program can not handle.\n";
+                    }
+                    isNet = false;
                 }
-                isNet = false;
             }
         }
     }
-
-    // Cartesian convert to Polar (Outer Relationship)
-    for (size_t i = 0; i < external_netlist.size(); i++) {
-        external_netlist[i].pad_pol = convert_cart_to_polar(external_netlist[i].pad_car);
-    }
-
-    // Cartesian convert to Polar (Inner Relationship)
-    for (size_t i = 0; i < internal_netlist.size(); i++) {
-        internal_netlist[i].pad1_pol = convert_cart_to_polar(internal_netlist[i].pad1_car);
-        internal_netlist[i].pad2_pol = convert_cart_to_polar(internal_netlist[i].pad2_car);
-    }
-
-    // final assign
-    chip->set_All_E_Netlist(external_netlist);
-    chip->set_All_I_Netlist(internal_netlist);
 
     fin.close();
     cout << "parse netlist DONE\n";

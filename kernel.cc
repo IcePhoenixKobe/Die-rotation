@@ -75,6 +75,21 @@ Cartesian CG(vector<Cartesian> pos)
     return cg;
 }
 
+// point rotation
+Cartesian shift_rotation(Cartesian point, Cartesian ori_center, Cartesian new_center, double rotation)
+{
+    return Cartesian(
+            (
+                (point.x - ori_center.x) * cos(rotation) 
+                - (point.y - ori_center.y) * sin(rotation)
+            ) + new_center.x
+        , (
+                (point.x - ori_center.x) * sin(rotation) 
+                + (point.y - ori_center.y) * cos(rotation)
+            ) + new_center.y
+    );
+}
+
 bool ignore_Power_Ground(string str)
 {
     if (ignore_P_G && (
@@ -116,11 +131,11 @@ void initialize(map<string, map<string, item>> &items,
     temp_item = item();
     pads.clear();
     balls.clear();
-
+/*
     // Draw Line
     {
         // Draw Inner Netlist Line
-        vector<InnerRelationship> inner_nets = chip->get_All_I_Netlist();
+        vector<relationship> inner_nets = chip->get_All_I_Netlist();
         for (size_t i = 0; i < inner_nets.size(); i++) {
             // draw single line
             if (inner_nets[i].dice_pads1_index.second.size() == 1 && inner_nets[i].dice_pads2_index.second.size() == 1)
@@ -579,7 +594,7 @@ void initialize(map<string, map<string, item>> &items,
             SubstrateContainer.getCenterPoint(), // the center of the substrate
             SubstrateContainer                   // the DrawContainer of the substrate
         );
-
+*/
     //double artificialDistance = 0.0;
     //double totalPadToFingerDistance = 0.0;
     //double totalFingerToBallDistance = 0.0;
