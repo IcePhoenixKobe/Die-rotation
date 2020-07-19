@@ -42,6 +42,7 @@ static gboolean checkButton_toggled(GtkToggleButton *toggleButton, gpointer user
 void WindowApp::Run(int argc, char *argv[])
 {
     g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
+    dataTransfer();
     g_application_run(G_APPLICATION(app), 1, argv);
     g_object_set (gtk_settings_get_default(), "gtk-enable-animations", TRUE, NULL);
 }

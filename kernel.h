@@ -10,6 +10,7 @@
 #include<sstream>
 #include<utility>
 #include<math.h>
+#include <limits>
 #include<vector>
 #include<cmath>
 #include<map>
@@ -71,8 +72,8 @@ typedef struct Relationship {
 void check_argument(int, char*[]);
 // judging whether ignore current netlist
 bool ignore_Power_Ground(std::string);
-// Convert cartesian coordinate system to polar coordinate system
-Polar convert_cart_to_polar(Cartesian);
+// Convert cartesian coordinate system to polar coordinate system (point, center)
+Polar convert_cart_to_polar(Cartesian, Cartesian);
 // calculate center of gravity by cartesian coordinate system
 Cartesian CG(std::vector<Cartesian>);
 // point rotation
@@ -108,11 +109,12 @@ struct PadGroup{
 
 /* Transfer chip data to windowApp g_entireObjMap */
 void dataTransfer();
-/* according to the information in 'balls', 'pads' and 'padBallPair', construct the 'PadGroupMap' and 
- * correspond DrawObject such that pad DrawRectangle, ball DrawCircle, pad_to_ball DrawLine
- * */
-void initialize(std::map<std::string, std::map<std::string, item>>&, 
-        std::map<Group, PadGroup>&);
+/* according to the information in 'balls', 'dice' and 'netlist' and correspond DrawObject
+ * such that dicee DrawRectangle, ball DrawCircle, netlist DrawLine*/
+void initialize(std::map<std::string, item>&,
+                             std::map<size_t, std::pair<Cartesian, Cartesian>>&,
+                             std::map<size_t, std::map<std::string, item>>&,
+                             std::map<std::string, std::map<std::string, relationship>>&);
 
 // For kernel.cc
 extern Cartesian GOD_Center;
@@ -120,6 +122,6 @@ extern double GOD_Rotation;
 extern Cartesian GOD_GOD_Center;
 extern double GOD_GOD_Rotation;
 // original rotation
-extern std::vector<double> ori_rotas;
+//extern std::vector<double> ori_rotas;
 
 #endif  // KERNEL_H

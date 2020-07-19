@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-Wall -g `pkg-config gtkmm-3.0 --cflags --libs`
+CFLAGS=-Wall -g -O3 `pkg-config gtkmm-3.0 --cflags --libs`
 OBJS=main.o kernel.o file_analyst.o chip.o windowApp.o gtk_cairo.o
 
 all:die_rotation

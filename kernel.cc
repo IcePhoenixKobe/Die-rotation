@@ -34,12 +34,14 @@ void check_argument(int argc, char* argv[])
 }
 
 // convert cartesian coordinate system to polar coordinate system
-Polar convert_cart_to_polar(Cartesian cart)
+Polar convert_cart_to_polar(Cartesian cart, Cartesian center)
 {
     Polar return_polar(0.0, 0.0);
     double x = 0.0, y = 0.0;
 
     // calculate radius
+    cart.x -= center.x;
+    cart.y -= center.y;
     return_polar.radius = cart.distance();
 
     // calculate theta
@@ -75,7 +77,7 @@ Cartesian CG(vector<Cartesian> pos)
     return cg;
 }
 
-// point rotation
+// point rotation (rotation is radian)
 Cartesian shift_rotation(Cartesian point, Cartesian ori_center, Cartesian new_center, double rotation)
 {
     return Cartesian(
@@ -111,27 +113,48 @@ bool ignore_Power_Ground(string str)
 		return false;
 }
 
-void dataTransfer(){
-    
-    map<string, map<string, item>> items;   // record object name and location
-    map<Group, PadGroup> padGroupMap;
-    items.clear();
-    padGroupMap.clear();
+void dataTransfer()
+{
+    map<string, map<string, relationship>> netlist;
+    map<string, item> balls;
+    map<size_t, map<string, item>> dice;
+    map<size_t, pair<Cartesian,Cartesian>> dice_center_WH;
+    netlist.clear();
+    balls.clear();
+    dice.clear();
+    dice_center_WH.clear();
+
+    // get all BGA balls data
+    balls = chip->get_Balls_Item();
+
+    Die temp_die;
+    for (size_t die_index = 0; die_index < chip->get_Dice_Amount(); die_index++) {
+        temp_die = chip->get_Die(die_index);
+
+        // Do some change???
+
+        // get die data
+        dice_center_WH[die_index] = pair<Cartesian, Cartesian>(chip->get_Die_Center(die_index), chip->get_Die_WH(die_index));
+        dice[die_index] = temp_die.get_Pads();
+    }
+
+    // get internal and external netlist
+    netlist["internal"] = chip->get_All_I_Netlist();
+    netlist["external"] = chip->get_All_E_Netlist();
     
     cout << "----------------\n";
-    initialize(items, padGroupMap);
+    initialize(balls, dice_center_WH, dice, netlist);
 }
 
-void initialize(map<string, map<string, item>> &items, 
-        map<Group, PadGroup> &padGroupMap)
+void initialize(map<string, item>& balls,
+                             map<size_t, pair<Cartesian, Cartesian>>& dice_CWH,
+                             map<size_t, map<string, item>>& dice,
+                             map<string, std::map<string, relationship>>& netlist)
 {
     item temp_item;
-    map<string, item> pads, balls;
     
     temp_item = item();
-    pads.clear();
-    balls.clear();
-/*
+    /*
     // Draw Line
     {
         // Draw Inner Netlist Line
@@ -245,7 +268,7 @@ void initialize(map<string, map<string, item>> &items,
             }
         }
         // Draw Outer Netlist Line
-        vector<OuterRelationship> outer_nets = chip->get_All_O_Netlist();
+        vector<OuterRelationship> outer_nets = chip->get_All_E_Netlist();
         for (size_t i = 0; i < outer_nets.size(); i++) {
             // get amount of pads
             size_t pads_amount = 0;
@@ -572,28 +595,29 @@ void initialize(map<string, map<string, item>> &items,
     }
     
     // Draw Substrate
-    // the 'DrawContainer' of the substrate
-    DrawContainer SubstrateContainer(
-            Point(), 
-            chip->drc.packageSize.x, 
-            chip->drc.packageSize.y
-        );
-    // the draw pattern of the ball
-    DrawRectangle SubstrateRect(
-            Point(),                 // the center of the substrate
-            Color(0.0, 0.0, 1.0),   // blue
-            chip->drc.packageSize.x,   // the width of the substrate
-            chip->drc.packageSize.y,   // the height of the substrate
-            cairo_stroke            // use stroke drawMethod
-        );
-    SubstrateContainer.push_back(&SubstrateRect);
-    
-    // construct the 'PhysicalObject' with substrate and store it
-    g_entireObjMap["SubstrateMap"]["substrate"] = PhysicalObject(
-            "substrate",                       // the name of the substrate
-            SubstrateContainer.getCenterPoint(), // the center of the substrate
-            SubstrateContainer                   // the DrawContainer of the substrate
-        );
+    {
+        DrawContainer SubstrateContainer(
+                Point(), 
+                chip->drc.packageSize.x, 
+                chip->drc.packageSize.y
+            );
+        // the draw pattern of the ball
+        DrawRectangle SubstrateRect(
+                Point(),                 // the center of the substrate
+                Color(0.0, 0.0, 1.0),   // blue
+                chip->drc.packageSize.x,   // the width of the substrate
+                chip->drc.packageSize.y,   // the height of the substrate
+                cairo_stroke            // use stroke drawMethod
+            );
+        SubstrateContainer.push_back(&SubstrateRect);
+        
+        // construct the 'PhysicalObject' with substrate and store it
+        g_entireObjMap["SubstrateMap"]["substrate"] = PhysicalObject(
+                "substrate",                       // the name of the substrate
+                SubstrateContainer.getCenterPoint(), // the center of the substrate
+                SubstrateContainer                   // the DrawContainer of the substrate
+            );
+    }
 */
     //double artificialDistance = 0.0;
     //double totalPadToFingerDistance = 0.0;

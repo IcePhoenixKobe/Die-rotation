@@ -16,7 +16,7 @@ extern int M_out;
 // GUI
 extern int GUI;
 // original rotation
-extern std::vector<double> ori_rotas;
+//extern std::vector<double> ori_rotas;
 
 extern Chip *chip;
 

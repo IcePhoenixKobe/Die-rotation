@@ -14,32 +14,13 @@ double GOD_Rotation = 0.0;
 Cartesian GOD_GOD_Center(0.0, 0.0);
 double GOD_GOD_Rotation = 0.0;
 
-vector<double> ori_rotas;
+//vector<double> ori_rotas;
 
 int main(int argc, char* argv[])
 {
     chip = new Chip;
 
     check_argument(argc, argv);
-
-    // Set GOD parameter
-    if (GUI != -1)
-    {
-        if (GUI + 3 < argc) {
-            GOD_Center.x = stod(argv[GUI + 1]);
-            GOD_Center.y = stod(argv[GUI + 2]);
-            GOD_Rotation = stod(argv[GUI + 3]) * M_PI / 180;
-            if (GUI + 6 < argc) {
-                GOD_GOD_Center.x = stod(argv[GUI + 4]);
-                GOD_GOD_Center.y = stod(argv[GUI + 5]);
-                GOD_GOD_Rotation = stod(argv[GUI + 6]) * M_PI / 180;
-                if (GUI + 8 < argc) {
-                    ori_rotas.push_back(stod(argv[GUI + 7]) * M_PI / 180);
-                    ori_rotas.push_back(stod(argv[GUI + 8]) * M_PI / 180);
-                }
-            }
-        }
-    }
 
     if (parser(argc, argv) == -1) {
         std::cout << "Program terminated because file open error!\n";
@@ -61,7 +42,7 @@ int main(int argc, char* argv[])
         }
         
         LP_file.close();
-        std::cout << "\n----------output \"" << argv[LP_out + 1] << "\" file done!----------\n";
+        std::cout << "\n----------output \"" << argv[LP_out + 1] << "\" file DONE!----------\n";
     }
 
     // Output .m file
@@ -79,14 +60,29 @@ int main(int argc, char* argv[])
         }
         
         M_file.close();
-        std::cout << "\n----------output \"" << argv[M_out + 1] << "\" file done!----------\n";
+        std::cout << "\n----------output \"" << argv[M_out + 1] << "\" file DONE!----------\n";
     }
 
     // Show GUI
     if (GUI != -1)
     {
+        // Set GOD parameter
+        if (GUI + 3 < argc) {
+            GOD_Center.x = stod(argv[GUI + 1]);
+            GOD_Center.y = stod(argv[GUI + 2]);
+            GOD_Rotation = stod(argv[GUI + 3]);
+            if (GUI + 6 < argc) {
+                GOD_GOD_Center.x = stod(argv[GUI + 4]);
+                GOD_GOD_Center.y = stod(argv[GUI + 5]);
+                GOD_GOD_Rotation = stod(argv[GUI + 6]);
+                /*if (GUI + 8 < argc) {
+                    ori_rotas.push_back(stod(argv[GUI + 7]));
+                    ori_rotas.push_back(stod(argv[GUI + 8]));
+                }*/
+            }
+        }
+
         WindowApp app;
-        dataTransfer();
         app.Run(argc, argv);
     }
 

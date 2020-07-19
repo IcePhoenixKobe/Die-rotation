@@ -21,6 +21,7 @@ public:
     ~Ball() {}
 
     // Get function
+    item get_Item() const { return ball; }
     std::string get_Name() const { return ball.name; }
     Cartesian get_Location() const { return ball.xy; }
     double get_Rotation() const { return ball.rotation; }
@@ -69,7 +70,8 @@ public:
     // Get individual pad data
     std::string get_Name(std::string str) { return pads[str].name; }
     Cartesian get_Pad_Cart_Location(std::string str) { return pads[str].xy; }
-    Polar get_Pad_Pol_Location(std::string str) { return convert_cart_to_polar(pads[str].xy); }
+    // maybe make some mistake
+    // Polar get_Pad_Pol_Location(std::string str) { return convert_cart_to_polar(pads[str].xy); }
     double get_Pad_Rotation(std::string str) { return pads[str].rotation; }
     double get_Pad_Radian(std::string str) { return pads[str].getRadian(); }
 
@@ -83,7 +85,8 @@ public:
     void set_Pad_Rotation(std::string par_number, double par_rota) { pads[par_number].rotation = par_rota; }
 
     // Other function
-    void Original_Location(double);
+    void calculate_WH();
+    void shift_Rotate(Cartesian, double);
 };
 
 class Chip
@@ -108,6 +111,7 @@ public:
 
     // Get function
     // get ball's information
+    std::map<std::string, item> get_Balls_Item() const;
     size_t get_Balls_Amount() const { return balls.size(); }
     std::vector<std::string> get_Balls_Number() const;
     std::map<std::string, std::string> get_Balls_Name() const;
@@ -124,6 +128,7 @@ public:
     Die get_Die(size_t index) const { return dice[index]; }
     size_t get_Die_Pad_Amount(size_t index) const { return dice[index].get_Pads_Amount(); }
     Cartesian get_Die_Center(size_t index) const { return dice[index].get_Center(); }
+    Cartesian get_Die_WH(size_t index) const { return Cartesian(dice[index].get_Width(), dice[index].get_Height()); }
     Cartesian get_Die_Pad_Location(std::string par_number) const;
     double get_Die_Pad_Rotation(std::string par_number) const;
     double get_Die_Pad_Radian(std::string par_number);
@@ -131,7 +136,7 @@ public:
     std::vector<Cartesian> get_Pads_Location(std::vector<std::string>) const;
     // get netlist information
     std::map<std::string, relationship> get_All_I_Netlist() const { return internal_netlist; }
-    std::map<std::string, relationship> get_All_O_Netlist() const { return external_netlist; }
+    std::map<std::string, relationship> get_All_E_Netlist() const { return external_netlist; }
     /*====================*/
 
     // Set function
@@ -173,7 +178,10 @@ public:
     void output_M_File(std::ofstream&, char*);
     /*====================*/
 
-    void Original_Die_Pads(size_t die_index, double rotation) { dice[die_index].Original_Location(rotation); }
+    // other function
+    void calculate_All_Dice_WH() { for (size_t die_index = 0; die_index < dice.size(); die_index++) dice[die_index].calculate_WH(); }
+    void shift_Rotate_Die_Pads(size_t die_index, Cartesian par_center, double par_rotation) { dice[die_index].shift_Rotate(par_center, par_rotation); }
+    /*====================*/
 };
 
 #endif  // CHIP_H

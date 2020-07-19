@@ -59,13 +59,32 @@ map<string, double> Die::get_Pads_Radian()
     return return_map;
 }
 
-void Die::Original_Location(double rotation)
+// calculate width and height with all pads
+void Die::calculate_WH()
+{
+    double maxX = numeric_limits<double>::min(), minX = numeric_limits<double>::max(), 
+                    maxY = numeric_limits<double>::min(), minY = numeric_limits<double>::max();
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++) {
+        item pad_location = map_it->second;
+        if(maxX < pad_location.xy.x) maxX = pad_location.xy.x;  // update maxX
+        if(minX > pad_location.xy.x) minX = pad_location.xy.x;  // update minX
+        if(maxY < pad_location.xy.y) maxY = pad_location.xy.y;  // update maxY
+        if(minY > pad_location.xy.y) minY = pad_location.xy.y;  // update minY
+    }
+    width = maxX - minX + 80;
+    height = maxY - minY + 80;
+    return;
+}
+
+// shift to new_center and rotate rotation degree (rotation is angle)
+void Die::shift_Rotate(Cartesian new_center, double rotation)
 {
     for (map<string, item>::iterator map_it = pads.begin(); map_it != pads.end(); map_it++)
     {
-        map_it->second.xy = shift_rotation(map_it->second.xy, center, Cartesian(0.0, 0.0), -rotation);
-        map_it->second.rotation -= rotation;
+        map_it->second.xy = shift_rotation(map_it->second.xy, center, new_center, (rotation * M_PI / 180.0));
+        map_it->second.rotation += rotation;
     }
+    center = new_center;
     return;
 }
 
@@ -104,7 +123,7 @@ void Chip::basic_infomation()
 void Chip::balls_Content()
 {
     cout << "\n----------Ball Content----------\n"
-     << "amount: " << balls.size() << endl;
+     << "Amount: " << balls.size() << endl;
     for (map<string, Ball>::const_iterator ball_it = balls.begin(); ball_it != balls.end(); ball_it++)
         cout << fixed << setprecision(3) 
             << setw(8) << ball_it->first 
@@ -124,14 +143,16 @@ void Chip::dice_Content()
     {
         cout << "\nDIE " << die_index + 1 << ":\n"
             << "Center: (" << dice[die_index].get_Center().x << ", " << dice[die_index].get_Center().y << ")\n"
-            << "Pad amount: " << dice[die_index].get_Pads_Amount() << endl;
+            << "Die Size X: " << dice[die_index].get_Width() << endl
+            << "Die Size Y: " << dice[die_index].get_Height() << endl
+            << "Pad Amount: " << dice[die_index].get_Pads_Amount() << endl;
         
         map<string, item> pads = dice[die_index].get_Pads();
         for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++) {
-            Polar pad_pol = convert_cart_to_polar(map_it->second.xy);
+            Polar pad_pol = convert_cart_to_polar(map_it->second.xy, dice[die_index].get_Center());
             cout << fixed << setprecision(3) << setw(9) << map_it->first
                             << " (x,y): (" << setw(10) << map_it->second.xy.x << ", " << setw(10)<< map_it->second.xy.y << ") |"
-                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle * 180 / M_PI << ") |"
+                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle * 180.0 / M_PI << ") |"
                             << " rotation: " << setw(7) << map_it->second.rotation << endl;
         }
     }
@@ -169,6 +190,17 @@ void Chip::netlist_Content()
     }
     cout << "----------Netlist Content----------\n";
     return;
+}
+
+// get all balls item
+std::map<std::string, item> Chip::get_Balls_Item() const
+{
+    map<string, item> return_map;
+    return_map.clear();
+    for (map<string, Ball>::const_iterator map_it = balls.begin(); map_it != balls.end(); map_it++) {
+        return_map[map_it->first] = map_it->second.get_Item();
+    }
+    return return_map;
 }
 
 // get all number of the ball
@@ -396,9 +428,9 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
         assert(map_it->second.pins1_number == 0);    // assert pins2 are ball(s).
 
         // get data that will be output
-        int die_number = map_it->second.pins2_number;
+        size_t die_number = map_it->second.pins2_number;
         Cartesian ball_cart = CG(get_Some_Balls_Location(map_it->second.pins1));
-        Polar pads_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)));
+        Polar pads_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)), get_Die_Center(die_number));
 
         if (map_it != external_netlist.begin()) fout << " + ";
         fout << "(x(" << (die_number - 1) * 3 + 1 << ")+"
@@ -406,15 +438,15 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
                  << ball_cart.x << ")^2 + "
                  << "(x(" << (die_number - 1) * 3 + 2 << ")+"
                  << pads_pol.radius << "*sin(" << pads_pol.angle << "+x(" << (die_number - 1) * 3 + 3 << "))-"
-                 << ball_cart.y << ")^2 + ";
+                 << ball_cart.y << ")^2";
     }
     // output inner relationship
     for (map<string, relationship>::const_iterator map_it = internal_netlist.begin(); map_it != internal_netlist.end(); map_it++)
     {
         // get data that will be output
-        int die_number1 = map_it->second.pins1_number, die_number2 = map_it->second.pins2_number;
-        Polar pads1_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins1))), 
-                    pads2_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)));
+        size_t die_number1 = map_it->second.pins1_number, die_number2 = map_it->second.pins2_number;
+        Polar pads1_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins1)), get_Die_Center(die_number1)), 
+                    pads2_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)), get_Die_Center(die_number2));
 
         fout << " + (x(" << (die_number1 - 1) * 3 + 1 << ")+"
                  << pads1_pol.radius << "*cos(" << pads1_pol.angle << "+x(" << (die_number1 - 1) * 3 + 3 << "))"

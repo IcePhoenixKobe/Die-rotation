@@ -167,7 +167,10 @@ void parse_PIN(ifstream& fin)
         }
 	}
 
+    // other processing
     if (dice_amount == 1) chip->set_Die_Center(0, Cartesian(0.0, 0.0)); // set  center as (0.0, 0.0) if only one die
+    // calculate all dice width and height
+    chip->calculate_All_Dice_WH();
 
     fin.close();
     cout << "parse pin DONE\n";
@@ -416,10 +419,10 @@ int parser(int argc, char** argv)
 {
     string str;
 	string index_suffle;
-    ifstream PIN_fin;		// PIN
-	ifstream netlist_fin;	// netlist
-    ifstream drc_fin;   // drc
-	//ofstream fout;			// relationship
+    ifstream PIN_fin;       // PIN
+	ifstream netlist_fin;   // netlist
+    ifstream drc_fin;       // drc
+	//ofstream fout;          // relationship
 
     str.clear();
     index_suffle.clear();
@@ -451,12 +454,20 @@ int parser(int argc, char** argv)
 		return -1;
 	}
     parse_Netlist(netlist_fin);
+
+    //for (size_t i = 0; i < chip->get_Dice_Amount(); i++) {
+    /*if (chip->get_Dice_Amount() == 2) {
+        chip->shift_Rotate_Die_Pads(0, Cartesian(0.0, 0.0), -15.0);
+        chip->shift_Rotate_Die_Pads(1, Cartesian(0.0, 0.0), 0.0);
+    }*/
+    //}
     
     chip->basic_infomation();
     chip->balls_Content();
     chip->dice_Content();
     chip->netlist_Content();
     
+    cout << "parse all files DONE\n";
     return 0;
 }
 
