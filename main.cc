@@ -75,10 +75,6 @@ int main(int argc, char* argv[])
                 GOD_GOD_Center.x = stod(argv[GUI + 4]);
                 GOD_GOD_Center.y = stod(argv[GUI + 5]);
                 GOD_GOD_Rotation = stod(argv[GUI + 6]);
-                /*if (GUI + 8 < argc) {
-                    ori_rotas.push_back(stod(argv[GUI + 7]));
-                    ori_rotas.push_back(stod(argv[GUI + 8]));
-                }*/
             }
         }
 

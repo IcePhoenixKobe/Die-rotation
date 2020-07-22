@@ -169,6 +169,10 @@ void parse_PIN(ifstream& fin)
 
     // other processing
     if (dice_amount == 1) chip->set_Die_Center(0, Cartesian(0.0, 0.0)); // set  center as (0.0, 0.0) if only one die
+    if (chip->get_Dice_Amount() == 2) {
+        chip->shift_Rotate_Die_Pads(0, Cartesian(0.0, 0.0), -15.0);
+        chip->shift_Rotate_Die_Pads(1, Cartesian(0.0, 0.0), 0.0);
+    }
     // calculate all dice width and height
     chip->calculate_All_Dice_WH();
 
@@ -454,13 +458,6 @@ int parser(int argc, char** argv)
 		return -1;
 	}
     parse_Netlist(netlist_fin);
-
-    //for (size_t i = 0; i < chip->get_Dice_Amount(); i++) {
-    /*if (chip->get_Dice_Amount() == 2) {
-        chip->shift_Rotate_Die_Pads(0, Cartesian(0.0, 0.0), -15.0);
-        chip->shift_Rotate_Die_Pads(1, Cartesian(0.0, 0.0), 0.0);
-    }*/
-    //}
     
     chip->basic_infomation();
     chip->balls_Content();
@@ -470,24 +467,3 @@ int parser(int argc, char** argv)
     cout << "parse all files DONE\n";
     return 0;
 }
-
-/*
-// move back original point
-        for (size_t j = 0; j < dice_pads_name[i].size(); j++)
-        {
-            double temp_rotation = dice_pads_rotation[i][j];
-            while(temp_rotation >= M_PI_2) temp_rotation -= M_PI_2;
-            while (temp_rotation <= -M_PI_2) temp_rotation += M_PI_2;
-
-            dice_pads_cartesian[i][j] = Cartesian(
-                    (
-                        (dice_pads_cartesian[i][j].x - dice_center[i].x) * cos(-temp_rotation) 
-                        - (dice_pads_cartesian[i][j].y - dice_center[i].y) * sin(-temp_rotation)
-                    ) + dice_center[i].x
-                , (
-                        (dice_pads_cartesian[i][j].x - dice_center[i].x) * sin(-temp_rotation) 
-                        + (dice_pads_cartesian[i][j].y - dice_center[i].y) * cos(-temp_rotation)
-                    ) + dice_center[i].y
-            );
-        }
-*/

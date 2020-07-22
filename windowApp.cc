@@ -137,13 +137,13 @@ static gboolean keyPressCallback(GtkWidget *widget, GdkEventKey *event, gpointer
     else if(event->keyval == GDK_KEY_Down){
         translate.y += speed;
     }
-    else if(event->keyval == GDK_KEY_0){
+    else if(event->keyval == GDK_KEY_KP_Subtract){
         scale -= (abs(scale) + 1.0) * 0.01;    
     }
-    else if(event->keyval == GDK_KEY_1){
+    else if(event->keyval == GDK_KEY_KP_Add){
         scale += (abs(scale) + 1.0) * 0.01;    
     }
-    else if(event->keyval == GDK_KEY_2){
+    else if(event->keyval == GDK_KEY_KP_Decimal){
         g_print("output_png\n");
         cairo_surface_write_to_png(surface, "output.png");
     }
@@ -300,7 +300,6 @@ static gboolean checkButton_toggled(GtkToggleButton *toggleButton, gpointer user
         if(checkButtonName == map_it->first){
             gboolean state = gtk_toggle_button_get_active(toggleButton);
             for(auto map_it2 = map_it->second.begin(); map_it2 != map_it->second.end(); ++map_it2){
-                
                 if(state == TRUE){
                     map_it2->second.drawContainer.setIsVisible(true);
                 }

@@ -2,6 +2,9 @@
 
 using namespace std;
 
+static const double inner_min_distance = 5760000;
+static const double expand_dietance = 1500;
+
 /* 
     Ball class defination
 */
@@ -152,7 +155,7 @@ void Chip::dice_Content()
             Polar pad_pol = convert_cart_to_polar(map_it->second.xy, dice[die_index].get_Center());
             cout << fixed << setprecision(3) << setw(9) << map_it->first
                             << " (x,y): (" << setw(10) << map_it->second.xy.x << ", " << setw(10)<< map_it->second.xy.y << ") |"
-                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle * 180.0 / M_PI << ") |"
+                            << " (r,θ): (" << setw(9)<< pad_pol.radius << ", " << setw(7) << pad_pol.angle << ") |"
                             << " rotation: " << setw(7) << map_it->second.rotation << endl;
         }
     }
@@ -416,6 +419,19 @@ void Chip::output_LP_File(ofstream& fout)
 // Output .m file for MATLABf
 void Chip::output_M_File(ofstream& fout, char* file_name)
 {
+    // expand DIE1
+    /*Die die1 = get_Die(0);
+    map<string, item> die1_pads_change = die1.get_Pads();
+    for (map<string, item>::iterator map_it = die1_pads_change.begin(); map_it != die1_pads_change.end(); map_it++) {
+        Polar pad_pol = convert_cart_to_polar(map_it->second.xy, dice[0].get_Center());
+        map_it->second.xy.x = (pad_pol.radius + expand_dietance) * cos(pad_pol.get_Radian());
+        map_it->second.xy.y = (pad_pol.radius + expand_dietance) * sin(pad_pol.get_Radian());
+    }
+    die1.set_Pads(die1_pads_change);
+    dice[0] = die1;*/
+
+    //dice_Content();
+
     /* Get Filename */
     string fun_name(file_name);
     fun_name = fun_name.substr(fun_name.rfind('/') + 1);    // get file name(contain .m)
@@ -425,7 +441,7 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
     // output outer relationship
     for (map<string, relationship>::const_iterator map_it = external_netlist.begin(); map_it != external_netlist.end(); map_it++)
     {
-        assert(map_it->second.pins1_number == 0);    // assert pins2 are ball(s).
+        assert(map_it->second.pins1_number == 0);    // assert pins1 are ball(s).
 
         // get data that will be output
         size_t die_number = map_it->second.pins2_number;
@@ -434,10 +450,10 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
 
         if (map_it != external_netlist.begin()) fout << " + ";
         fout << "(x(" << (die_number - 1) * 3 + 1 << ")+"
-                 << pads_pol.radius << "*cos(" << pads_pol.angle << "+x(" << (die_number - 1) * 3 + 3 << "))-"
+                 << pads_pol.radius << "*cos(" << pads_pol.get_Radian() << "+x(" << (die_number - 1) * 3 + 3 << "))-"
                  << ball_cart.x << ")^2 + "
                  << "(x(" << (die_number - 1) * 3 + 2 << ")+"
-                 << pads_pol.radius << "*sin(" << pads_pol.angle << "+x(" << (die_number - 1) * 3 + 3 << "))-"
+                 << pads_pol.radius << "*sin(" << pads_pol.get_Radian() << "+x(" << (die_number - 1) * 3 + 3 << "))-"
                  << ball_cart.y << ")^2";
     }
     // output inner relationship
@@ -445,17 +461,19 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
     {
         // get data that will be output
         size_t die_number1 = map_it->second.pins1_number, die_number2 = map_it->second.pins2_number;
-        Polar pads1_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins1)), get_Die_Center(die_number1)), 
-                    pads2_pol = convert_cart_to_polar(CG(get_Pads_Location(map_it->second.pins2)), get_Die_Center(die_number2));
+        Cartesian pads1_CG = CG(get_Pads_Location(map_it->second.pins1)),
+                             pads2_CG = CG(get_Pads_Location(map_it->second.pins2));
+        Polar pads1_pol = convert_cart_to_polar(pads1_CG, get_Die_Center(die_number1)), 
+                    pads2_pol = convert_cart_to_polar(pads2_CG, get_Die_Center(die_number2));
 
         fout << " + (x(" << (die_number1 - 1) * 3 + 1 << ")+"
-                 << pads1_pol.radius << "*cos(" << pads1_pol.angle << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
+                 << pads1_pol.radius << "*cos(" << pads1_pol.get_Radian() << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
                  << "-x(" << (die_number2 - 1) * 3 + 1 << ")-"
-                 << pads2_pol.radius << "*cos(" << pads2_pol.angle << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2"
+                 << pads2_pol.radius << "*cos(" << pads2_pol.get_Radian() << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2"
                  << " + (x(" << (die_number1 - 1) * 3 + 2 << ")+"
-                 << pads1_pol.radius << "*sin(" << pads1_pol.angle << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
+                 << pads1_pol.radius << "*sin(" << pads1_pol.get_Radian() << "+x(" << (die_number1 - 1) * 3 + 3 << "))"
                  << "-x(" << (die_number2 - 1) * 3 + 2 << ")-"
-                 << pads2_pol.radius << "*sin(" << pads2_pol.angle << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2";
+                 << pads2_pol.radius << "*sin(" << pads2_pol.get_Radian() << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2";
     }
     fout << ";";
     return;

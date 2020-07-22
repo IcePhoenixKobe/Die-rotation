@@ -66,6 +66,8 @@ typedef struct Relationship {
     Relationship() : pins1_number(-1UL), pins2_number(-1UL) { pins1.clear(); pins2.clear(); }
     Relationship(size_t par_number1, size_t par_number2, std::vector<std::string> par_pins1, std::vector<std::string> par_pins2) 
         : pins1_number(par_number1), pins2_number(par_number2), pins1(par_pins1), pins2(par_pins2) {}
+    // function
+    std::pair<Cartesian, Cartesian> get_CWH();
 } relationship;
 
 // set global parameter with input argument
@@ -112,8 +114,8 @@ void dataTransfer();
 /* according to the information in 'balls', 'dice' and 'netlist' and correspond DrawObject
  * such that dicee DrawRectangle, ball DrawCircle, netlist DrawLine*/
 void initialize(std::map<std::string, item>&,
-                             std::map<size_t, std::pair<Cartesian, Cartesian>>&,
-                             std::map<size_t, std::map<std::string, item>>&,
+                             std::vector<std::pair<Cartesian, Cartesian>>&,
+                             std::vector<std::map<std::string, item>>&,
                              std::map<std::string, std::map<std::string, relationship>>&);
 
 // For kernel.cc

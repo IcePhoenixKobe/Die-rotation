@@ -149,6 +149,10 @@ public:
             dice.push_back(Die());
         }
     }
+    void set_Die(size_t index, Die par_die) {
+        assert(index < dice.size());
+        dice[index] = par_die;
+    }
     void set_Die_Width_Height(size_t index, double par_width, double par_height) {
         assert(index < dice.size());
         dice[index].set_WH(par_width, par_height);

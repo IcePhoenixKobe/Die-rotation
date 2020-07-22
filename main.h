@@ -1,8 +1,8 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include"kernel.h"
 #include"chip.h"
+#include"kernel.h"
 #include"windowApp.h"
 
 // whether output minimize in LP file
@@ -15,9 +15,7 @@ extern int LP_out;
 extern int M_out;
 // GUI
 extern int GUI;
-// original rotation
-//extern std::vector<double> ori_rotas;
-
+// chip for every one
 extern Chip *chip;
 
 #endif  // MAIN_H
