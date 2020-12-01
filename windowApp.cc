@@ -170,6 +170,8 @@ static gboolean onDrawEvent(GtkWidget *widget, cairo_t *cr2, gpointer user_data)
 
     cairo_t *cr;
     cr = cairo_create(surface);
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_paint(cr);
     cairo_translate(cr, translate.x, translate.y);
     cairo_scale(cr, scale, scale);
     cairo_set_line_width(cr, 2.0 / scale);

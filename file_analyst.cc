@@ -171,7 +171,7 @@ void parse_PIN(ifstream& fin)
     if (dice_amount == 1) chip->set_Die_Center(0, Cartesian(0.0, 0.0)); // set  center as (0.0, 0.0) if only one die
     if (chip->get_Dice_Amount() == 2) {
         chip->shift_Rotate_Die_Pads(0, Cartesian(0.0, 0.0), -15.0);
-        chip->shift_Rotate_Die_Pads(1, Cartesian(0.0, 0.0), 0.0);
+        chip->shift_Rotate_Die_Pads(1, Cartesian(0.0, 0.0), -180.0);
     }
     // calculate all dice width and height
     chip->calculate_All_Dice_WH();

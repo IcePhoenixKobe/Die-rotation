@@ -13,6 +13,8 @@ extern bool ignore_P_G;
 extern int LP_out;
 // The index of argument that point next one argument is .M file name
 extern int M_out;
+// The index of argument that point next one argument is constraint .M file name
+extern int MC_out;
 // GUI
 extern int GUI;
 // chip for every one

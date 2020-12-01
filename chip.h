@@ -59,6 +59,7 @@ public:
     // Get function
     double get_Width() const { return width; }
     double get_Height() const { return height; }
+    double get_diagonal() const { return sqrt(pow(width / 2.0, 2.0) + pow(height / 2.0, 2.0)); }
     Cartesian get_Center() const { return center; }
     size_t get_Pads_Amount() const { return pads.size(); }
     std::map<std::string, item> get_Pads() const { return pads; }
@@ -180,6 +181,7 @@ public:
     // file output
     void output_LP_File(std::ofstream&);
     void output_M_File(std::ofstream&, char*);
+    void output_MC_File(std::ofstream&, char*);
     /*====================*/
 
     // other function

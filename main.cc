@@ -5,6 +5,7 @@ Chip *chip = nullptr;
 
 int LP_out = -1;
 int M_out = -1;
+int MC_out = -1;
 int GUI = -1;
 bool min_output = true;
 bool ignore_P_G = false;
@@ -61,6 +62,24 @@ int main(int argc, char* argv[])
         
         M_file.close();
         std::cout << "\n----------output \"" << argv[M_out + 1] << "\" file DONE!----------\n";
+    }
+
+    // Output constraint .m file
+    if (MC_out != -1)
+    {
+        std::ofstream MC_file;
+        MC_file.clear();
+
+        MC_file.open(argv[MC_out + 1]);
+        if (MC_file.is_open()) {
+            chip->output_MC_File(MC_file, argv[MC_out + 1]);
+        }
+        else {
+            std::cout << "open file \"" << argv[MC_out + 1] << "\" error.\n";
+        }
+        
+        MC_file.close();
+        std::cout << "\n----------output \"" << argv[MC_out + 1] << "\" file DONE!----------\n";
     }
 
     // Show GUI

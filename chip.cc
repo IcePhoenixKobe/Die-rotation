@@ -2,8 +2,8 @@
 
 using namespace std;
 
-static const double inner_min_distance = 5760000;
-static const double expand_dietance = 1500;
+static const double inner_spacing = -3000.0;
+static const double boundary = 600.0;
 
 /* 
     Ball class defination
@@ -74,8 +74,16 @@ void Die::calculate_WH()
         if(maxY < pad_location.xy.y) maxY = pad_location.xy.y;  // update maxY
         if(minY > pad_location.xy.y) minY = pad_location.xy.y;  // update minY
     }
-    width = maxX - minX + 80;
-    height = maxY - minY + 80;
+    width = maxX - minX;
+    height = maxY - minY;
+
+    // check whether all of die pads is contained in the die width and die height
+    for (map<string, item>::const_iterator map_it = pads.begin(); map_it != pads.end(); map_it++) {
+        if (width / 2.0 < abs(map_it->second.xy.x - center.x)) width = 2 * abs(map_it->second.xy.x - center.x);
+        if (height / 2.0 < abs(map_it->second.xy.y - center.y)) height = 2 * abs(map_it->second.xy.y - center.y);
+    }
+    width += 80;
+    height += 80;
     return;
 }
 
@@ -416,22 +424,9 @@ void Chip::output_LP_File(ofstream& fout)
     return;
 }
 
-// Output .m file for MATLABf
+// Output .m file for MATLAB
 void Chip::output_M_File(ofstream& fout, char* file_name)
 {
-    // expand DIE1
-    /*Die die1 = get_Die(0);
-    map<string, item> die1_pads_change = die1.get_Pads();
-    for (map<string, item>::iterator map_it = die1_pads_change.begin(); map_it != die1_pads_change.end(); map_it++) {
-        Polar pad_pol = convert_cart_to_polar(map_it->second.xy, dice[0].get_Center());
-        map_it->second.xy.x = (pad_pol.radius + expand_dietance) * cos(pad_pol.get_Radian());
-        map_it->second.xy.y = (pad_pol.radius + expand_dietance) * sin(pad_pol.get_Radian());
-    }
-    die1.set_Pads(die1_pads_change);
-    dice[0] = die1;*/
-
-    //dice_Content();
-
     /* Get Filename */
     string fun_name(file_name);
     fun_name = fun_name.substr(fun_name.rfind('/') + 1);    // get file name(contain .m)
@@ -476,5 +471,64 @@ void Chip::output_M_File(ofstream& fout, char* file_name)
                  << pads2_pol.radius << "*sin(" << pads2_pol.get_Radian() << "+x(" << (die_number2 - 1) * 3 + 3 << ")))^2";
     }
     fout << ";";
+
+    return;
+}
+
+// Output .m file for MATLABf
+void Chip::output_MC_File(ofstream& fout, char* file_name)
+{
+    /* Get Filename */
+    string fun_name(file_name);
+    fun_name = fun_name.substr(fun_name.rfind('/') + 1);    // get file name(contain .m)
+    size_t found = fun_name.rfind('.');    // get dot position
+    fun_name.erase(fun_name.begin() + found, fun_name.end());   // get file name(no .m)
+
+    //cout << "Dice size = " << dice.size() << endl;  // check dice amount
+    fout << "function [c, ceq] = " << fun_name << "(x)\n";
+
+    int con_counter = 1;
+
+    if (static_cast<int>(dice.size()) == 1)
+    {
+        // cout << "(w, h) :(" << dice[0].get_Width() << ", " << dice[0].get_Height() << ")" << endl;   // check die size
+        double half_x = dice[0].get_Width() / 2, half_y = dice[0].get_Height() / 2;
+        Polar vertex[4] = {convert_cart_to_polar(Cartesian(half_x, half_y), dice[0].get_Center()), // First quadrant
+                                            convert_cart_to_polar(Cartesian(-half_x, half_y), dice[0].get_Center()),    // Second quadrant 
+                                            convert_cart_to_polar(Cartesian(-half_x, -half_y), dice[0].get_Center()),   // Third quadrant
+                                            convert_cart_to_polar(Cartesian(half_x, -half_y), dice[0].get_Center())};   // Fourth quadrant
+        // check polar
+        for (int i = 0; i < 4; i++)
+            cout << "(r, θ, radian): (" << vertex[i].radius << ", " << vertex[i].angle << ", " << vertex[i].get_Radian() << ")\n";  
+        
+        for (int i = 0; i < 4; i++, con_counter += 4)
+        {
+            fout << fixed 
+                    << "c(" << con_counter << ") = " << dice[0].get_Center().x << " + " 
+                    << vertex->radius << "*cos(x(3)+" << vertex[i].get_Radian() << ") + " << boundary << " - " << drc.packageSize.x/2 << ";\n"
+                    << "c(" << con_counter + 1 << ") = -(" << dice[0].get_Center().x << " + " 
+                    << vertex->radius << "*cos(x(3)+" << vertex[i].get_Radian() << ") - " << boundary << ") - " << drc.packageSize.x/2 << ";\n"
+                    << "c(" << con_counter + 2 << ") = " << dice[0].get_Center().y << " + " 
+                    << vertex->radius << "*sin(x(3)+" << vertex[i].get_Radian() << ") + " << boundary << " - " << drc.packageSize.y/2 << ";\n"
+                    << "c(" << con_counter + 3 << ") = -(" << dice[0].get_Center().y << " + " 
+                    << vertex->radius << "*sin(x(3)+" << vertex[i].get_Radian() << ") - " << boundary << ") - " << drc.packageSize.y/2 << ";\n";
+        }
+    }
+    if (static_cast<int>(dice.size()) == 2)
+    {
+        /*
+        for (size_t loop1 = 0; loop1 < dice.size(); loop1++) {
+            for (size_t loop2 = loop1 + 1; loop2 < dice.size(); loop2++) {
+            }
+        }
+        */
+        size_t loop1 = 0, loop2 = 1;
+        fout  << fixed << "c = "
+                  << pow(dice[loop1].get_diagonal() + dice[loop2].get_diagonal() + inner_spacing, 2.0) 
+                  << " - ((x(" << loop1 * 3 + 1 << ")-x(" << loop2 * 3 + 1 << "))^2 + (x(" << loop1 * 3 + 2 << ")-x(" << loop2 * 3 + 2 << "))^2);\n";
+    }
+    fout << "ceq = [];";
+    fout.close();
+
     return;
 }

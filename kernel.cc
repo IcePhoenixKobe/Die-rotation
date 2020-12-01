@@ -49,6 +49,8 @@ void check_argument(int argc, char* argv[]) {
                 LP_out = i;
             if (strcmp(argv[i], "-M") == 0)
                 M_out = i;
+            if (strcmp(argv[i], "-MC") == 0)
+                MC_out = i;
             if (strcmp(argv[i], "-G") == 0)
                 GUI = i;
         }
@@ -147,16 +149,6 @@ void dataTransfer() {
     // get all BGA balls data
     balls = chip->get_Balls_Item();
 
-    /*Die die1 = chip->get_Die(0);
-    map<string, item> die1_pads_change = die1.get_Pads();
-    for (map<string, item>::iterator map_it = die1_pads_change.begin(); map_it != die1_pads_change.end(); map_it++) {
-        Polar pad_pol = convert_cart_to_polar(map_it->second.xy, chip->get_Die_Center(0));
-        map_it->second.xy.x = (pad_pol.radius + 1500) * cos(pad_pol.get_Radian());
-        map_it->second.xy.y = (pad_pol.radius + 1500) * sin(pad_pol.get_Radian());
-    }
-    die1.set_Pads(die1_pads_change);
-    chip->set_Die(0, die1);*/
-
     Die temp_die;
     for (size_t die_index = 0; die_index < chip->get_Dice_Amount(); die_index++) {
         temp_die = chip->get_Die(die_index);
@@ -191,7 +183,7 @@ void initialize(map<string, item>& balls,
         // the draw pattern of the ball
         DrawRectangle SubstrateRect(
                 Point(),                 // the center of the substrate
-                Color(0.0, 0.0, 1.0),   // blue
+                Color(0.0, 0.498, 0.0),   // half green
                 chip->drc.packageSize.x,   // the width of the substrate
                 chip->drc.packageSize.y,   // the height of the substrate
                 cairo_stroke            // use stroke drawMethod
@@ -260,7 +252,7 @@ void initialize(map<string, item>& balls,
             );
         DrawRectangle DieRect(
                 Point(dice_CWH[die_index].first.x, -dice_CWH[die_index].first.y),   // the center of the die
-                Color(0.0, 1.0, 1.0),   // cyan
+                Color(0.0, 0.0, 0.0),   // black
                 dice_CWH[die_index].second.x,   // the width of the die
                 dice_CWH[die_index].second.y,  // the height of the die
                 cairo_stroke
@@ -282,7 +274,7 @@ void initialize(map<string, item>& balls,
                     );
             DrawRectangle padRect(
                     padCenter,              // the center of the pad
-                    Color(0.0, 1.0, 1.0),   // cyan
+                    Color(54/256, 54/256, 54/256),   // grey21
                     pad_width,              // the width of the pad
                     pad_height,             // the height of the pad
                     cairo_stroke            // use stroke drawMethod
@@ -318,7 +310,7 @@ void initialize(map<string, item>& balls,
         
         // move and rotate
         if (die_index == 0) {
-            if (GOD_Center.x != 0.0 && GOD_Center.y != 0.0)
+            if (GOD_Center.x != 0.0 || GOD_Center.y != 0.0)
                 DieContainer.translate(GOD_Center.x, -GOD_Center.y);
             if (GOD_Rotation != 0.0)
                 DieContainer.rotate(-(GOD_Rotation * M_PI / 180.0));
@@ -326,7 +318,7 @@ void initialize(map<string, item>& balls,
             chip->shift_Rotate_Die_Pads(0, Cartesian(GOD_Center.x, GOD_Center.y), GOD_Rotation);
         }
         else if (die_index == 1) {
-            if (GOD_GOD_Center.x != 0.0 && GOD_GOD_Center.y != 0.0)
+            if (GOD_GOD_Center.x != 0.0 || GOD_GOD_Center.y != 0.0)
                 DieContainer.translate(GOD_GOD_Center.x, -GOD_GOD_Center.y);
             if (GOD_GOD_Rotation != 0.0)
                 DieContainer.rotate(-(GOD_GOD_Rotation) * M_PI / 180.0);
@@ -441,13 +433,13 @@ void initialize(map<string, item>& balls,
                         DrawLine PinToCGLine(
                                 ball_center,              // start point is pins1[index] center
                                 balls_CG_center,             // end point is pins1 CG center
-                                Color(0.0, 0.498, 0.0)    // half green
+                                Color(0.0, 0.0, 0.5)    // half blue
                             );
                         NetContainer.push_back(&PinToCGLine);
                     }
                     DrawCircle CGCircle (
                             balls_CG_center, 
-                            Color(0.0, 0.498, 0.0),     // half green
+                            Color(0.0, 0.0, 0.5),     // half blue
                             CG_radius,                          // the radius of the CG
                             cairo_fill                              // use file drawMethod
                         );
@@ -460,13 +452,13 @@ void initialize(map<string, item>& balls,
                         DrawLine PinToCGLine(
                                 pads_CG_center,              // start point is pins2 CG center
                                 pad_center,                     // end point is pins2[index] center
-                                Color(0.0, 0.498, 0.0)    // half green
+                                Color(0.0, 0.0, 0.5)    // half blue
                             );
                         NetContainer.push_back(&PinToCGLine);
                     }
                     DrawCircle CGCircle (
                             pads_CG_center, 
-                            Color(0.0, 0.498, 0.0),     // half green
+                            Color(0.0, 0.0, 0.5),     // half blue
                             CG_radius,                          // the radius of the CG
                             cairo_fill                              // use file drawMethod
                         );
@@ -476,7 +468,7 @@ void initialize(map<string, item>& balls,
                 DrawLine CGToCGLine(
                             balls_CG_center,              // start point is pins1 CG center
                             pads_CG_center,             // end point is pins2 CG center
-                            Color(0.0, 1.0, 0.0)            // green
+                            Color(0.0, 0.0, 1.0)            // blue
                     );
                 NetContainer.push_back(&CGToCGLine);
 
